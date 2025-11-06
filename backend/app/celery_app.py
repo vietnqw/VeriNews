@@ -6,6 +6,7 @@ from __future__ import annotations
 
 
 from celery import Celery
+from celery.schedules import schedule
 
 from app.config.settings import settings
 
@@ -28,6 +29,15 @@ def _create_celery() -> Celery:
         worker_concurrency=settings.celery.worker_count,
         task_default_retry_delay=5,
     )
+
+    # Beat schedule (kickoff all crawls periodically)
+    interval_seconds = max(60, settings.scheduler.crawler_interval_minutes * 60)
+    app.conf.beat_schedule = {
+        "kickoff-all-crawls": {
+            "task": "app.tasks.crawler_tasks.kickoff_all_crawls",
+            "schedule": schedule(interval_seconds),
+        }
+    }
     return app
 
 
