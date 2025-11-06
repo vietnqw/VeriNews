@@ -18,7 +18,8 @@ from rich.table import Table
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from app.config.database import async_session_maker
-from app.services import rss_feed_service
+from app.services.repository.news_source_repository import NewsSourceRepository
+from app.services.repository.rss_feed_repository import RssFeedRepository
 
 app = typer.Typer(help="Manage RSS feeds from sources.yaml configuration")
 console = Console()
@@ -46,6 +47,9 @@ async def sync_sources_async():
         console.print("[yellow]No sources found in configuration file[/yellow]")
         return
 
+    source_repo = NewsSourceRepository()
+    feed_repo = RssFeedRepository()
+
     async with async_session_maker() as session:
         try:
             stats = {
@@ -59,14 +63,12 @@ async def sync_sources_async():
                 source_name = source_data["name"]
                 source_url = source_data["base_url"]
 
-                # Check if source exists
-                source = await rss_feed_service.get_source_by_name(session, source_name)
+                # Get or create source
+                source, created = await source_repo.get_or_create(
+                    session, source_name, source_url
+                )
 
-                if not source:
-                    # Create new source
-                    source = await rss_feed_service.create_source(
-                        session, source_name, source_url
-                    )
+                if created:
                     stats["sources_created"] += 1
                     console.print(f"[green]✓[/green] Created source: {source_name}")
                 else:
@@ -87,32 +89,23 @@ async def sync_sources_async():
                         else bool(raw_is_active)
                     )
 
-                    # Check if feed exists
-                    feed = await rss_feed_service.get_feed_by_url(session, feed_url)
+                    # Get or create feed
+                    feed, feed_created = await feed_repo.get_or_create(
+                        session, source.id, feed_url, feed_topic
+                    )
 
-                    if not feed:
-                        # Create new feed
-                        await rss_feed_service.create_feed(
-                            session, source.id, feed_url, feed_topic
+                    if feed_created:
+                        # Update is_active state per config
+                        await feed_repo.update(
+                            session, feed.id, topic=feed_topic, is_active=is_active
                         )
-                        # Ensure is_active state per config
-                        created = await rss_feed_service.get_feed_by_url(
-                            session, feed_url
-                        )
-                        if created is not None:
-                            await rss_feed_service.update_feed_fields(
-                                session,
-                                created.id,
-                                topic=feed_topic,
-                                is_active=is_active,
-                            )
                         stats["feeds_created"] += 1
                         console.print(
                             f"  [green]✓[/green] Created feed: {feed_topic or 'General'} - {feed_url} (active={is_active})"
                         )
                     else:
                         # Update existing feed to match config (but do not delete any others)
-                        await rss_feed_service.update_feed_fields(
+                        await feed_repo.update(
                             session, feed.id, topic=feed_topic, is_active=is_active
                         )
                         stats["feeds_found"] += 1
@@ -137,9 +130,11 @@ async def sync_sources_async():
 
 async def list_feeds_async():
     """List all feeds from database."""
+    feed_repo = RssFeedRepository()
+
     async with async_session_maker() as session:
         try:
-            feeds = await rss_feed_service.list_all_feeds(session)
+            feeds = await feed_repo.list_all_with_source(session)
 
             if not feeds:
                 console.print("[yellow]No feeds found in database[/yellow]")
@@ -171,10 +166,13 @@ async def list_feeds_async():
 
 async def add_feed_async(source_name: str, feed_url: str, topic: str = None):
     """Add a single feed manually."""
+    source_repo = NewsSourceRepository()
+    feed_repo = RssFeedRepository()
+
     async with async_session_maker() as session:
         try:
-            # Get or create source
-            source = await rss_feed_service.get_source_by_name(session, source_name)
+            # Get source
+            source = await source_repo.get_by_name(session, source_name)
 
             if not source:
                 console.print(f"[red]Error: Source '{source_name}' not found[/red]")
@@ -185,13 +183,15 @@ async def add_feed_async(source_name: str, feed_url: str, topic: str = None):
                 raise typer.Exit(code=1)
 
             # Check if feed already exists
-            existing_feed = await rss_feed_service.get_feed_by_url(session, feed_url)
+            existing_feed = await feed_repo.get_by_url(session, feed_url)
             if existing_feed:
                 console.print(f"[yellow]Feed already exists: {feed_url}[/yellow]")
                 raise typer.Exit(code=0)
 
             # Create feed
-            await rss_feed_service.create_feed(session, source.id, feed_url, topic)
+            await feed_repo.create(
+                session, source_id=source.id, feed_url=feed_url, topic=topic
+            )
             await session.commit()
 
             console.print(f"[green]✓[/green] Added feed: {topic or 'General'}")
@@ -206,15 +206,17 @@ async def add_feed_async(source_name: str, feed_url: str, topic: str = None):
 
 async def remove_feed_async(feed_url: str):
     """Remove a feed by URL."""
+    feed_repo = RssFeedRepository()
+
     async with async_session_maker() as session:
         try:
-            feed = await rss_feed_service.get_feed_by_url(session, feed_url)
+            feed = await feed_repo.get_by_url(session, feed_url)
 
             if not feed:
                 console.print(f"[yellow]Feed not found: {feed_url}[/yellow]")
                 raise typer.Exit(code=0)
 
-            await rss_feed_service.delete_feed(session, feed.id)
+            await feed_repo.delete(session, feed.id)
             await session.commit()
 
             console.print(f"[green]✓[/green] Removed feed: {feed_url}")
@@ -226,15 +228,15 @@ async def remove_feed_async(feed_url: str):
 
 async def set_active_async(feed_url: str, active: bool):
     """Set active status for a feed by URL."""
+    feed_repo = RssFeedRepository()
+
     async with async_session_maker() as session:
         try:
-            feed = await rss_feed_service.get_feed_by_url(session, feed_url)
+            feed = await feed_repo.get_by_url(session, feed_url)
             if not feed:
                 console.print(f"[yellow]Feed not found: {feed_url}[/yellow]")
                 raise typer.Exit(code=1)
-            await rss_feed_service.update_feed_fields(
-                session, feed.id, is_active=active
-            )
+            await feed_repo.update(session, feed.id, is_active=active)
             await session.commit()
             console.print(f"[green]✓[/green] Set feed active={active}: {feed_url}")
         except Exception as e:

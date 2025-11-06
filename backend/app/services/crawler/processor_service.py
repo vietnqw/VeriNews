@@ -1,8 +1,7 @@
 """
-Article Processing Orchestrator
+Article Processing Service
 
-For a given Article record, chunk its content and create ArticleChunk entries
-with embeddings.
+Orchestrates article content processing: chunking and embedding generation.
 """
 
 from __future__ import annotations
@@ -10,13 +9,13 @@ from __future__ import annotations
 import uuid
 from typing import List
 
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.article import Article
 from app.models.article_chunk import ArticleChunk
-from app.services.embedding_service import generate_embedding
-from app.services.text_chunker import chunk_text
+from app.services.content.embedding_service import generate_embedding
+from app.services.content.chunking_service import chunk_text
 
 
 async def process_article(session: AsyncSession, article_id: uuid.UUID) -> int:
@@ -38,8 +37,6 @@ async def process_article(session: AsyncSession, article_id: uuid.UUID) -> int:
         return 0
 
     # Remove existing chunks (idempotent processing) without lazy-loading
-    from sqlalchemy import delete
-
     await session.execute(
         delete(ArticleChunk).where(ArticleChunk.article_id == article.id)
     )

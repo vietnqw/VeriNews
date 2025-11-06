@@ -17,9 +17,9 @@ from sqlalchemy.exc import IntegrityError
 from app.config.database import async_session_maker, engine
 from app.models.article import Article
 from app.models.rss_feed import RssFeed
-from app.services.article_processor import process_article
-from app.services.article_scraper import scrape_article_content
-from app.services.rss_fetcher import fetch_rss_feed
+from app.services.crawler.processor_service import process_article
+from app.services.crawler.scraper_service import scrape_article_content
+from app.services.crawler.rss_service import fetch_rss_feed
 from app.config.settings import settings
 
 
