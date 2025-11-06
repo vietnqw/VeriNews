@@ -5,12 +5,14 @@ Provides helper functions for database operations in the service layer.
 """
 
 from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config.database import async_session_maker
 
 
+@asynccontextmanager
 async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
     """
     Get an async database session.
