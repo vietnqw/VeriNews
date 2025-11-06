@@ -19,6 +19,7 @@ from app.models.rss_feed import RssFeed
 from app.services.article_processor import process_article
 from app.services.article_scraper import scrape_article_content
 from app.services.rss_fetcher import fetch_rss_feed
+from app.config.settings import settings
 
 
 def _run(coro):
@@ -66,6 +67,7 @@ def crawl_feed(feed_id: str) -> int:
                     return 0
 
                 entries = fetch_rss_feed(feed.feed_url)
+                max_new = settings.crawler.max_articles_per_feed
 
                 # Cache existing URLs for quick duplicate checks
                 existing_urls = set()
@@ -75,9 +77,12 @@ def crawl_feed(feed_id: str) -> int:
                 for (url,) in result.all():
                     existing_urls.add(url)
 
+                processed = 0
                 for e in entries:
                     if e["link"] in existing_urls:
                         continue
+                    if max_new > 0 and processed >= max_new:
+                        break
                     article = Article(
                         title=e.get("title") or e["link"],
                         url=e["link"],
@@ -88,9 +93,11 @@ def crawl_feed(feed_id: str) -> int:
                     await session.flush()
                     process_article_task.delay(str(article.id))
                     new_count += 1
+                    processed += 1
 
                 feed.last_fetched_at = datetime.utcnow()
                 await session.flush()
+                await session.commit()
             return new_count
         finally:
             await engine.dispose()
