@@ -24,18 +24,16 @@ VeriNews/
 │   └── scripts/         # Development scripts
 ├── docker/              # Docker configuration
 │   └── docker-compose.yml
-├── docs/                # Project documentation
-│   ├── system-design.md
-│   └── project-description.md
 ├── .env                 # Environment variables (not in git)
-└── .env.example         # Environment template
+├── .env.example         # Environment template
+└── .pre-commit-config.yaml # Pre-commit hooks configuration
 ```
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
-- Python 3.11+
+- Python 3.13+
 - UV package manager ([installation](https://github.com/astral-sh/uv))
 - Docker & Docker Compose
 - Git
@@ -60,14 +58,11 @@ VeriNews/
    ./scripts/start_dev.sh
    ```
 
-The API will be available at:
-- **API**: http://localhost:8000
-- **API Docs**: http://localhost:8000/api/v1/docs
-- **Adminer**: http://localhost:8080
 
 ## 📚 Documentation
 
-- [Backend README](backend/README.md) - Detailed backend setup and API documentation
+For detailed technical information, including setup, development, and API documentation, please see the [Backend README](backend/README.md).
+
 - [System Design](docs/system-design.md) - Architecture and component overview
 - [Project Description](docs/project-description.md) - Product vision and features
 
@@ -90,76 +85,6 @@ The API will be available at:
 - **LLM**: GPT-4 / Claude API
 - **Image Detection**: Third-party API
 
-## 🧪 Development
-
-### Backend Development
-
-```bash
-cd backend
-
-# Install dependencies
-uv sync
-
-# Start development server
-./scripts/start_dev.sh
-
-# Check health
-./scripts/check_health.sh
-
-# Stop services
-./scripts/stop_dev.sh
-
-# Reset database (⚠️ deletes all data)
-./scripts/reset_db.sh
-```
-
-### Database Migrations
-
-```bash
-cd backend
-
-# Create new migration
-uv run alembic revision --autogenerate -m "description"
-
-# Apply migrations
-uv run alembic upgrade head
-
-# Check current version
-uv run alembic current
-```
-
-## 🐳 Docker Services
-
-**PostgreSQL** with pgvector extension:
-- Port: 5432
-- Database: verinews_db
-- User: verinews_user
-
-**Adminer** (Database UI):
-- URL: http://localhost:8080
-- Server: postgres
-
-## 📖 API Documentation
-
-Once the server is running, visit:
-- **Swagger UI**: http://localhost:8000/api/v1/docs
-- **ReDoc**: http://localhost:8000/api/v1/redoc
-
-### Health Check
-
-```bash
-curl http://localhost:8000/api/v1/health
-```
-
-Response:
-```json
-{
-  "status": "healthy",
-  "api": "running",
-  "database": "connected",
-  "pgvector": "available (v0.8.1)"
-}
-```
 
 ## 🗺️ Roadmap
 
@@ -172,6 +97,7 @@ Response:
 - [x] FastAPI application bootstrap
 - [x] Health check endpoints
 - [x] Docker setup
+- [x] Pre-commit setup for code quality
 - [x] Documentation
 
 ### Phase 2: Core Services (In Progress)

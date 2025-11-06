@@ -5,7 +5,6 @@ AI-powered news verification system for social media.
 ## Table of Contents
 
 - [Overview](#overview)
-- [Tech Stack](#tech-stack)
 - [Project Structure](#project-structure)
 - [Setup](#setup)
 - [Development](#development)
@@ -15,16 +14,6 @@ AI-powered news verification system for social media.
 ## Overview
 
 VeriNews backend is built with FastAPI and provides a robust, scalable API for news verification using AI-powered analysis.
-
-## Tech Stack
-
-- **Framework**: FastAPI 0.118+
-- **Database**: PostgreSQL 18 with pgvector extension
-- **ORM**: SQLAlchemy 2.0 (async)
-- **Migrations**: Alembic
-- **Logging**: Loguru
-- **Package Manager**: UV
-- **Containerization**: Docker & Docker Compose
 
 ## Project Structure
 
@@ -60,60 +49,69 @@ backend/
 
 ### Prerequisites
 
-- Python 3.11+
+- Python 3.13+
 - UV package manager
 - Docker & Docker Compose
-- PostgreSQL (via Docker)
 
 ### Installation
 
-1. **Navigate to backend directory**:
+1. **Clone the repository and navigate to the root**:
    ```bash
-   cd backend
+   git clone <repository-url>
+   cd VeriNews
    ```
 
-2. **Install dependencies using UV**:
+2. **Set up environment variables**:
    ```bash
+   cp .env.example .env
+   # Edit .env with your configuration
+   ```
+
+3. **Install dependencies using UV** (from the `backend` directory):
+   ```bash
+   cd backend
    uv sync
    ```
 
-3. **Set up environment variables**:
+4. **Start Docker services** (from the project root):
    ```bash
-   # Copy example env file from project root
-   cp ../.env.example ../.env
-   # Edit .env with your configuration
-   nano ../.env
-   ```
-
-4. **Start Docker services** (PostgreSQL + Adminer):
-   ```bash
-   cd ..
+   # This is handled by the start_dev.sh script, but can be run manually
    docker compose -f docker/docker-compose.yml up -d
    ```
 
-5. **Run database migrations**:
+5. **Run database migrations** (from the `backend` directory):
    ```bash
-   cd backend
    uv run alembic upgrade head
    ```
 
-6. **Start the development server**:
+6. **Start the development server** (from the `backend` directory):
    ```bash
-   uv run python -m app.main
+   ./scripts/start_dev.sh
    ```
 
-The API will be available at: http://localhost:8000
+By default, the API will be available at: http://localhost:8000
 
 ## Development
 
 ### Running the Server
 
+To start the entire development environment (Docker containers, migrations, and FastAPI server), simply run the `start_dev.sh` script from the `backend` directory.
+
 ```bash
 # From backend/ directory
-uv run python -m app.main
+./scripts/start_dev.sh
 ```
 
-The server runs with auto-reload enabled for development.
+The script handles all startup logic, and the server runs with auto-reload enabled.
+
+### Development Scripts
+
+All scripts are located in `backend/scripts/` and should be run from the `backend` directory.
+
+- `start_dev.sh`: Starts Docker containers, runs migrations, and launches the FastAPI server.
+- `stop_dev.sh`: Stops the Docker containers.
+- `reset_db.sh`: **Deletes all data!** Resets the database by stopping containers, removing the data volume, and restarting everything.
+- `check_health.sh`: Pings the health check endpoints to verify the server is running correctly.
 
 ### Environment Configuration
 
@@ -153,6 +151,10 @@ OPENAI_API_KEY=your_openai_api_key
 
 ### Docker Services
 
+The `start_dev.sh` and `stop_dev.sh` scripts manage the Docker services for you. The services are defined in `docker/docker-compose.yml`.
+
+**Manual Docker Commands** (run from the project root):
+
 **Start services**:
 ```bash
 docker compose -f docker/docker-compose.yml up -d
@@ -175,12 +177,13 @@ docker compose -f docker/docker-compose.yml ps
 
 ### Adminer Database UI
 
-Access the database through Adminer at: http://localhost:8080
+Access Adminer at: http://localhost:8080.The default Adminer database credentials below are defined in the `.env` file and can be changed as needed.
 
 - **Server**: postgres
 - **Username**: verinews_user
 - **Password**: verinews_password
 - **Database**: verinews_db
+
 
 ## Database Migrations
 
@@ -280,12 +283,22 @@ uv run pytest --cov=app
 
 ## Code Quality
 
-```bash
-# Format code (when configured)
-uv run ruff format .
+The project uses `ruff` for linting and formatting, enforced by `pre-commit` hooks.
 
-# Lint code
+**Run pre-commit on all files**:
+```bash
+# From backend/ directory
+uv run pre-commit run --all-files
+```
+
+**Run linter**:
+```bash
 uv run ruff check .
+```
+
+**Run formatter**:
+```bash
+uv run ruff format .
 ```
 
 ## Troubleshooting
@@ -322,18 +335,6 @@ uv run alembic current
 # Check for inconsistencies
 uv run alembic check
 
-# If needed, stamp to specific version
+# If needed, stamp to a specific version (e.g., 'head')
 uv run alembic stamp head
 ```
-
-## Next Steps
-
-1. Add more API endpoints (verification, articles, etc.)
-2. Implement business logic services
-3. Add comprehensive test suite
-4. Set up CI/CD pipeline
-5. Add API authentication and authorization
-
-## License
-
-See LICENSE file in project root.
