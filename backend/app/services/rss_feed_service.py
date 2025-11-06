@@ -197,3 +197,35 @@ async def update_feed_status(
         await session.flush()
         return feed
     return None
+
+
+async def update_feed_fields(
+    session: AsyncSession,
+    feed_id: uuid.UUID,
+    *,
+    topic: Optional[str] = None,
+    is_active: Optional[bool] = None,
+) -> Optional[RssFeed]:
+    """
+    Update mutable fields of an RSS feed (topic, is_active).
+
+    Args:
+        session: Database session
+        feed_id: UUID of the RSS feed
+        topic: Optional new topic
+        is_active: Optional new active status
+
+    Returns:
+        Optional[RssFeed]: Updated feed if found, None otherwise
+    """
+    feed = await get_feed_by_id(session, feed_id)
+    if not feed:
+        return None
+
+    if topic is not None and topic != feed.topic:
+        feed.topic = topic
+    if is_active is not None and is_active != feed.is_active:
+        feed.is_active = is_active
+
+    await session.flush()
+    return feed
