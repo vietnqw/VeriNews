@@ -6,7 +6,6 @@ from __future__ import annotations
 
 
 from celery import Celery
-from celery.schedules import schedule
 
 from app.config.settings import settings
 
@@ -35,7 +34,7 @@ def _create_celery() -> Celery:
     app.conf.beat_schedule = {
         "kickoff-all-crawls": {
             "task": "app.tasks.crawler_tasks.kickoff_all_crawls",
-            "schedule": schedule(interval_seconds),
+            "schedule": interval_seconds,
         }
     }
     return app
