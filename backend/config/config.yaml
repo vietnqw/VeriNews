@@ -1,0 +1,13 @@
+# VeriNews Configuration File
+# Application-level settings and business logic parameters
+
+# Scheduler Configuration
+scheduler:
+  crawler_interval_minutes: 60  # How often to run the news crawler
+  article_expiration_hours: 24  # Articles older than this are ignored
+
+# Crawler Configuration
+crawler:
+  max_articles_per_feed: 100  # Maximum articles to fetch per RSS feed (-1 for unlimited)
+  max_content_length: 50000  # Maximum article content length (-1 for unlimited)
+
