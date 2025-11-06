@@ -20,12 +20,12 @@ logger = get_logger(__name__)
 async def health_check(db: AsyncSession = Depends(get_db)):
     """
     Health check endpoint
-    
+
     Checks:
     - API is running
     - Database connectivity
     - pgvector extension availability
-    
+
     Returns:
         dict: Health status information
     """
@@ -35,13 +35,13 @@ async def health_check(db: AsyncSession = Depends(get_db)):
         "database": "disconnected",
         "pgvector": "unavailable",
     }
-    
+
     try:
         # Test database connection
         result = await db.execute(text("SELECT 1"))
         result.scalar()
         health_status["database"] = "connected"
-        
+
         # Check pgvector extension
         result = await db.execute(
             text("SELECT extversion FROM pg_extension WHERE extname = 'vector'")
@@ -49,10 +49,10 @@ async def health_check(db: AsyncSession = Depends(get_db)):
         vector_version = result.scalar()
         if vector_version:
             health_status["pgvector"] = f"available (v{vector_version})"
-        
+
         logger.debug("Health check passed")
         return health_status
-        
+
     except Exception as e:
         logger.error(f"Health check failed: {e}")
         health_status["status"] = "unhealthy"
@@ -64,9 +64,8 @@ async def health_check(db: AsyncSession = Depends(get_db)):
 async def simple_health_check():
     """
     Simple health check without database dependency
-    
+
     Returns:
         dict: Basic health status
     """
     return {"status": "ok"}
-

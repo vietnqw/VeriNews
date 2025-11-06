@@ -37,11 +37,11 @@ logger = get_logger(__name__)
 async def lifespan(app: FastAPI):
     """
     Lifespan context manager for startup and shutdown events
-    
+
     Startup:
     - Initialize database connection
     - Setup any background tasks or schedulers
-    
+
     Shutdown:
     - Close database connections
     - Cleanup resources
@@ -50,16 +50,16 @@ async def lifespan(app: FastAPI):
     logger.info(f"Starting {settings.PROJECT_NAME}...")
     logger.info(f"Environment: {settings.ENVIRONMENT}")
     logger.info(f"API Prefix: {settings.API_PREFIX}")
-    
+
     try:
         await init_db()
         logger.success("Application startup complete")
     except Exception as e:
         logger.error(f"Failed to initialize application: {e}")
         raise
-    
+
     yield
-    
+
     # Shutdown
     logger.info("Shutting down application...")
     await close_db()
@@ -110,4 +110,3 @@ if __name__ == "__main__":
         reload=True,
         log_config=None,  # Disable uvicorn's logging config (use our Loguru setup)
     )
-

@@ -22,4 +22,3 @@ docker compose -f docker/docker-compose.yml stop postgres adminer
 
 echo ""
 echo "✅ All services stopped"
-

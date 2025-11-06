@@ -15,21 +15,23 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 def load_yaml_config() -> dict:
     """
     Load YAML configuration file.
-    
+
     Returns:
         Dictionary containing YAML configuration, or empty dict if file not found
     """
     # Try multiple paths for config.yaml
     possible_paths = [
         Path("config/config.yaml"),  # Run from backend root
-        Path(__file__).parent.parent.parent / "config" / "config.yaml",  # Relative to this file
+        Path(__file__).parent.parent.parent
+        / "config"
+        / "config.yaml",  # Relative to this file
     ]
-    
+
     for config_path in possible_paths:
         if config_path.is_file():
             with open(config_path, "r") as f:
                 return yaml.safe_load(f) or {}
-    
+
     return {}
 
 
@@ -39,12 +41,14 @@ yaml_config = load_yaml_config()
 
 class SchedulerSettings(BaseSettings):
     """Scheduler configuration for periodic tasks"""
+
     crawler_interval_minutes: int = 60
     article_expiration_hours: int = 24
 
 
 class CrawlerSettings(BaseSettings):
     """News crawler configuration"""
+
     max_articles_per_feed: int = 100
     max_content_length: int = 50000
 
@@ -52,12 +56,17 @@ class CrawlerSettings(BaseSettings):
 class Settings(BaseSettings):
     """
     Main application settings.
-    
+
     Loads from environment variables and YAML configuration.
     Environment files are loaded from the project root (VeriNews/.env).
     """
+
     model_config = SettingsConfigDict(
-        env_file=["../.env", "../../.env", "../../../.env"],  # Search from backend/app/config up to project root
+        env_file=[
+            "../.env",
+            "../../.env",
+            "../../../.env",
+        ],  # Search from backend/app/config up to project root
         env_ignore_empty=True,
         extra="ignore",
     )
@@ -113,4 +122,3 @@ class Settings(BaseSettings):
 
 # Global settings instance
 settings = Settings()
-

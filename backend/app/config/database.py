@@ -37,10 +37,10 @@ async_session_maker = async_sessionmaker(
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
     FastAPI dependency that provides a database session
-    
+
     Yields:
         AsyncSession: Database session for use in route handlers
-        
+
     Example:
         @app.get("/items")
         async def get_items(db: AsyncSession = Depends(get_db)):
@@ -62,11 +62,11 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 async def init_db() -> None:
     """
     Initialize database connection (optional startup check)
-    
+
     This can be called during application startup to verify database connectivity.
     """
     try:
-        async with engine.begin() as conn:
+        async with engine.begin():
             logger.info("Database connection established successfully")
     except Exception as e:
         logger.error(f"Failed to connect to database: {e}")
@@ -79,4 +79,3 @@ async def close_db() -> None:
     """
     await engine.dispose()
     logger.info("Database connections closed")
-

@@ -44,4 +44,3 @@ uv run alembic upgrade head
 
 echo ""
 echo "✅ Database reset complete"
-

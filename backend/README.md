@@ -337,4 +337,3 @@ uv run alembic stamp head
 ## License
 
 See LICENSE file in project root.
-

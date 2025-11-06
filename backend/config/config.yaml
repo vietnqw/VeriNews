@@ -10,4 +10,3 @@ scheduler:
 crawler:
   max_articles_per_feed: 100  # Maximum articles to fetch per RSS feed (-1 for unlimited)
   max_content_length: 50000  # Maximum article content length (-1 for unlimited)
-

@@ -59,7 +59,7 @@ class InterceptHandler(logging.Handler):
     def emit(self, record: logging.LogRecord) -> None:
         """
         Emit a log record by redirecting to Loguru
-        
+
         Args:
             record: Standard Python logging record
         """
@@ -90,7 +90,7 @@ def setup_logging(
 ) -> None:
     """
     Configure unified logging using Loguru
-    
+
     Args:
         log_level: Minimum log level to capture (DEBUG, INFO, WARNING, ERROR, CRITICAL)
         log_file: Path to log file (used in production)
@@ -125,7 +125,7 @@ def setup_logging(
     if environment == "production":
         log_path = Path(log_file)
         log_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         logger.add(
             log_file,
             level=log_level,
@@ -152,12 +152,11 @@ def setup_logging(
 def get_logger(name: str = __name__):
     """
     Get a Loguru logger instance
-    
+
     Args:
         name: Logger name (usually __name__)
-    
+
     Returns:
         Loguru logger instance bound to the specified name
     """
     return logger.bind(name=name)
-
