@@ -8,7 +8,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, String, func
+from sqlalchemy import DateTime, ForeignKey, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -23,8 +23,8 @@ class Article(Base):
     """
     Article model - represents a news article.
 
-    Article content is stored in chunks (ArticleChunk) with embeddings.
-    No full content field here - reconstruct from chunks when needed.
+    Article content is stored for processing, then chunked into ArticleChunk
+    records with embeddings for semantic search.
     """
 
     __tablename__ = "articles"
@@ -37,6 +37,7 @@ class Article(Base):
     # Core Fields
     title: Mapped[str] = mapped_column(String(512), nullable=False)
     url: Mapped[str] = mapped_column(String(1024), nullable=False, unique=True)
+    content: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Publication Date
     published_at: Mapped[datetime | None] = mapped_column(
