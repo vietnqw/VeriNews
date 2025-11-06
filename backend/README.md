@@ -259,6 +259,143 @@ Response:
 }
 ```
 
+## Crawler & Task Queue
+
+VeriNews uses Celery with Redis for background task processing to crawl news feeds.
+
+### Architecture
+
+The crawler consists of 4 components:
+
+1. **Redis** - Message broker and result backend
+2. **Celery Workers** - Execute crawling tasks in parallel
+3. **Celery Beat** - Scheduler for periodic crawls
+4. **FastAPI App** - Main API server
+
+### RSS Feed Configuration
+
+News sources and their RSS feeds are defined in [`config/sources.yaml`](../config/sources.yaml).
+
+**Sync feeds to database**:
+```bash
+# From backend/ directory
+uv run python scripts/sync_feeds.py sync
+```
+
+**List configured feeds**:
+```bash
+uv run python scripts/sync_feeds.py list
+```
+
+**Manually add a feed**:
+```bash
+uv run python scripts/sync_feeds.py add \
+    --source-name "BBC News" \
+    --feed-url "http://feeds.bbci.co.uk/news/rss.xml" \
+    --topic "General"
+```
+
+### Starting the Crawler
+
+**Option 1: Start complete crawler environment** (recommended):
+```bash
+./scripts/start_crawler.sh
+```
+
+This starts Redis, Celery workers, and Celery Beat in background mode. Logs are written to `logs/celery-worker.log` and `logs/celery-beat.log`.
+
+**Option 2: Start components individually**:
+
+Start Celery workers:
+```bash
+./scripts/start_workers.sh
+```
+
+Start Celery Beat scheduler:
+```bash
+./scripts/start_beat.sh
+```
+
+### Stopping the Crawler
+
+```bash
+# Stop workers
+./scripts/stop_workers.sh
+
+# Stop scheduler
+./scripts/stop_beat.sh
+```
+
+### Monitoring
+
+**View worker logs**:
+```bash
+tail -f logs/celery-worker.log
+```
+
+**View scheduler logs**:
+```bash
+tail -f logs/celery-beat.log
+```
+
+**Monitor with Flower** (web UI):
+```bash
+uv run celery -A app.celery_app flower
+```
+Then visit: http://localhost:5555
+
+### Crawler Tasks
+
+The crawler pipeline consists of 3 Celery tasks:
+
+1. **`kickoff_all_crawls()`** - Scheduled task (runs every N minutes)
+   - Queries all active RSS feeds
+   - Enqueues `crawl_feed()` for each
+
+2. **`crawl_feed(feed_id)`** - Fetches RSS entries
+   - Parses RSS feed
+   - Creates Article records for new entries
+   - Enqueues `process_article_task()` for each
+
+3. **`process_article_task(article_id)`** - Processes articles
+   - Scrapes full article content
+   - Chunks content into semantic segments
+   - Generates embeddings for each chunk
+   - Stores ArticleChunk records
+
+### Manual Task Triggering
+
+Trigger a manual crawl for all feeds:
+```bash
+uv run python -c "from app.tasks.crawler_tasks import kickoff_all_crawls; kickoff_all_crawls.delay()"
+```
+
+Trigger a crawl for a specific feed:
+```bash
+uv run python -c "from app.tasks.crawler_tasks import crawl_feed; crawl_feed.delay('FEED_ID_HERE')"
+```
+
+### Configuration
+
+Crawler settings are in [`config/config.yaml`](../config/config.yaml):
+
+```yaml
+celery:
+  broker_url: redis://localhost:6379/0
+  result_backend: redis://localhost:6379/0
+  worker_count: 4
+  task_time_limit: 300
+
+scheduler:
+  crawler_interval_minutes: 60
+
+crawler:
+  fetch_timeout_seconds: 30
+  max_articles_per_feed: 100
+  max_content_length: 50000
+  user_agent: "VeriNews/1.0"
+```
+
 ## Logging
 
 Logs are configured using Loguru:
