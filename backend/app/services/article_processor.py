@@ -37,11 +37,13 @@ async def process_article(session: AsyncSession, article_id: uuid.UUID) -> int:
     if not article.content:
         return 0
 
-    # Remove existing chunks (idempotent processing)
-    if article.chunks:
-        for ch in list(article.chunks):
-            await session.delete(ch)
-        await session.flush()
+    # Remove existing chunks (idempotent processing) without lazy-loading
+    from sqlalchemy import delete
+
+    await session.execute(
+        delete(ArticleChunk).where(ArticleChunk.article_id == article.id)
+    )
+    await session.flush()
 
     chunks: List[str] = chunk_text(article.content, strategy="paragraph")
     created = 0
