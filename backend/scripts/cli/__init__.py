@@ -1,0 +1,1 @@
+"""VeriNews CLI package."""

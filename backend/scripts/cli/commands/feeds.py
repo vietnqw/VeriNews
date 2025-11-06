@@ -1,9 +1,4 @@
-#!/usr/bin/env python3
-"""
-RSS Feed Sync Script
-
-CLI tool to manage RSS feeds by syncing from sources.yaml configuration file.
-"""
+"""RSS feed management commands."""
 
 import asyncio
 import sys
@@ -14,20 +9,23 @@ import yaml
 from rich.console import Console
 from rich.table import Table
 
-# Add parent directory to path to import app modules
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# Add backend directory to path for app imports
+SCRIPTS_DIR = Path(__file__).parent.parent.parent
+BACKEND_DIR = SCRIPTS_DIR.parent
+sys.path.insert(0, str(BACKEND_DIR))
 
-from app.config.database import async_session_maker
-from app.services.repository.news_source_repository import NewsSourceRepository
-from app.services.repository.rss_feed_repository import RssFeedRepository
+# Imports after sys.path modification (noqa: E402)
+from app.config.database import async_session_maker  # noqa: E402
+from app.services.repository.news_source_repository import NewsSourceRepository  # noqa: E402
+from app.services.repository.rss_feed_repository import RssFeedRepository  # noqa: E402
 
-app = typer.Typer(help="Manage RSS feeds from sources.yaml configuration")
+app = typer.Typer(help="RSS feed management commands")
 console = Console()
 
 
 def load_sources_config() -> dict:
     """Load sources configuration from YAML file."""
-    config_path = Path(__file__).parent.parent / "config" / "sources.yaml"
+    config_path = BACKEND_DIR / "config" / "sources.yaml"
     if not config_path.exists():
         console.print(
             f"[red]Error: Configuration file not found at {config_path}[/red]"
@@ -81,7 +79,6 @@ async def sync_sources_async():
                 for feed_data in source_data.get("feeds", []):
                     feed_url = feed_data["url"]
                     feed_topic = feed_data.get("topic")
-                    # Default active unless explicitly set to 0/false
                     raw_is_active = feed_data.get("is_active", 1)
                     is_active = (
                         bool(int(raw_is_active))
@@ -95,7 +92,6 @@ async def sync_sources_async():
                     )
 
                     if feed_created:
-                        # Update is_active state per config
                         await feed_repo.update(
                             session, feed.id, topic=feed_topic, is_active=is_active
                         )
@@ -104,7 +100,6 @@ async def sync_sources_async():
                             f"  [green]✓[/green] Created feed: {feed_topic or 'General'} - {feed_url} (active={is_active})"
                         )
                     else:
-                        # Update existing feed to match config (but do not delete any others)
                         await feed_repo.update(
                             session, feed.id, topic=feed_topic, is_active=is_active
                         )
@@ -283,7 +278,3 @@ def set_active(
 ):
     """Set a feed active or inactive by URL."""
     asyncio.run(set_active_async(url, active))
-
-
-if __name__ == "__main__":
-    app()

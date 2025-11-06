@@ -1,0 +1,40 @@
+#!/usr/bin/env -S uv run python
+"""
+VeriNews CLI - All-in-one management tool
+
+Usage:
+    ./scripts/verinews dev start       # Start development environment
+    ./scripts/verinews dev stop        # Stop development environment
+    ./scripts/verinews dev reset       # Reset database (destructive!)
+
+    ./scripts/verinews crawler start   # Start crawler (workers + scheduler)
+    ./scripts/verinews crawler stop    # Stop crawler
+    ./scripts/verinews crawler sync    # Sync RSS feeds from sources.yaml
+    ./scripts/verinews crawler status  # Check crawler status
+
+    ./scripts/verinews health          # Check API health
+    ./scripts/verinews logs [service]  # View logs (worker, beat, or api)
+"""
+
+import typer
+
+from cli.commands import crawler, dev, feeds, utils
+
+app = typer.Typer(
+    name="verinews",
+    help="VeriNews management CLI",
+    add_completion=False,
+)
+
+# Register command groups
+app.add_typer(dev.app, name="dev")
+app.add_typer(crawler.app, name="crawler")
+app.add_typer(feeds.app, name="feeds")
+
+# Register utility commands at root level
+app.command()(utils.health)
+app.command()(utils.logs)
+
+
+if __name__ == "__main__":
+    app()
