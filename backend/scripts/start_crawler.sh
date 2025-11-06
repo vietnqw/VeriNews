@@ -39,6 +39,7 @@ echo ""
 echo "3. Starting Celery workers in background..."
 echo "   Logs: backend/logs/celery-worker.log"
 cd "$SCRIPT_DIR/.."
+mkdir -p logs
 nohup uv run celery -A app.celery_app worker --loglevel=info > logs/celery-worker.log 2>&1 &
 WORKER_PID=$!
 echo "   ✓ Workers started (PID: $WORKER_PID)"
