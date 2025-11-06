@@ -12,6 +12,7 @@ from typing import List
 from celery import shared_task
 from loguru import logger
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from app.config.database import async_session_maker, engine
 from app.models.article import Article
@@ -83,17 +84,24 @@ def crawl_feed(feed_id: str) -> int:
                         continue
                     if max_new > 0 and processed >= max_new:
                         break
-                    article = Article(
-                        title=e.get("title") or e["link"],
-                        url=e["link"],
-                        published_at=e.get("published_at"),
-                        feed_id=feed_uuid,
-                    )
-                    session.add(article)
-                    await session.flush()
-                    process_article_task.delay(str(article.id))
-                    new_count += 1
-                    processed += 1
+
+                    try:
+                        article = Article(
+                            title=e.get("title") or e["link"],
+                            url=e["link"],
+                            published_at=e.get("published_at"),
+                            feed_id=feed_uuid,
+                        )
+                        session.add(article)
+                        await session.flush()
+                        process_article_task.delay(str(article.id))
+                        new_count += 1
+                        processed += 1
+                    except IntegrityError:
+                        # Article URL already exists (race condition with another worker)
+                        await session.rollback()
+                        logger.debug(f"Skipping duplicate article: {e['link']}")
+                        continue
 
                 feed.last_fetched_at = datetime.utcnow()
                 await session.flush()
