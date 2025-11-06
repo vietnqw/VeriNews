@@ -39,6 +39,15 @@ def load_yaml_config() -> dict:
 yaml_config = load_yaml_config()
 
 
+class CelerySettings(BaseSettings):
+    """Celery configuration for task queue"""
+
+    broker_url: str = "redis://localhost:6379/0"
+    result_backend: str = "redis://localhost:6379/0"
+    worker_count: int = 4
+    task_time_limit: int = 300
+
+
 class SchedulerSettings(BaseSettings):
     """Scheduler configuration for periodic tasks"""
 
@@ -51,6 +60,8 @@ class CrawlerSettings(BaseSettings):
 
     max_articles_per_feed: int = 100
     max_content_length: int = 50000
+    fetch_timeout_seconds: int = 30
+    user_agent: str = "VeriNews/1.0"
 
 
 class Settings(BaseSettings):
@@ -96,10 +107,15 @@ class Settings(BaseSettings):
     POSTGRES_PASSWORD: str
     POSTGRES_DB: str
 
+    # Redis Configuration
+    REDIS_HOST: str = "localhost"
+    REDIS_PORT: int = 6379
+
     # AI/ML Configuration
     OPENAI_API_KEY: str = ""
 
     # YAML-based configurations
+    celery: CelerySettings = CelerySettings(**yaml_config.get("celery", {}))
     scheduler: SchedulerSettings = SchedulerSettings(**yaml_config.get("scheduler", {}))
     crawler: CrawlerSettings = CrawlerSettings(**yaml_config.get("crawler", {}))
 

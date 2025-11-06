@@ -1,6 +1,13 @@
 # VeriNews Configuration File
 # Application-level settings and business logic parameters
 
+# Celery Configuration
+celery:
+  broker_url: redis://localhost:6379/0
+  result_backend: redis://localhost:6379/0
+  worker_count: 4
+  task_time_limit: 300
+
 # Scheduler Configuration
 scheduler:
   crawler_interval_minutes: 60  # How often to run the news crawler
@@ -10,3 +17,5 @@ scheduler:
 crawler:
   max_articles_per_feed: 100  # Maximum articles to fetch per RSS feed (-1 for unlimited)
   max_content_length: 50000  # Maximum article content length (-1 for unlimited)
+  fetch_timeout_seconds: 30  # HTTP request timeout
+  user_agent: "VeriNews/1.0"  # User agent for HTTP requests
