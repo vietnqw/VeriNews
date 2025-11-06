@@ -54,9 +54,10 @@ class Settings(BaseSettings):
     Main application settings.
     
     Loads from environment variables and YAML configuration.
+    Environment files are loaded from the project root (VeriNews/.env).
     """
     model_config = SettingsConfigDict(
-        env_file=[".env", "../.env"],
+        env_file=["../.env", "../../.env", "../../../.env"],  # Search from backend/app/config up to project root
         env_ignore_empty=True,
         extra="ignore",
     )
