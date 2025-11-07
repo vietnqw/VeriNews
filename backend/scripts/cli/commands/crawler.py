@@ -63,15 +63,29 @@ def stop():
     """Stop the crawler."""
     console.print("[yellow]Stopping Celery workers and Beat scheduler...[/]")
 
-    # Stop workers
+    # Stop workers (including all child processes)
     if is_process_running("celery.*worker"):
-        run_command("pkill -f 'celery.*worker'", check=False)
+        # Use SIGTERM first (graceful shutdown)
+        run_command("pkill -TERM -f 'celery.*worker'", check=False)
+        import time
+
+        time.sleep(2)
+        # Force kill any remaining processes
+        run_command("pkill -KILL -f 'celery.*worker'", check=False)
         console.print("[green]✓ Workers stopped[/]")
+    else:
+        console.print("[dim]Workers not running[/]")
 
     # Stop beat
     if is_process_running("celery.*beat"):
-        run_command("pkill -f 'celery.*beat'", check=False)
+        run_command("pkill -TERM -f 'celery.*beat'", check=False)
+        import time
+
+        time.sleep(1)
+        run_command("pkill -KILL -f 'celery.*beat'", check=False)
         console.print("[green]✓ Scheduler stopped[/]")
+    else:
+        console.print("[dim]Scheduler not running[/]")
 
     console.print("[green]✓ Crawler stopped[/]")
 

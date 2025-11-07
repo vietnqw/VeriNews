@@ -17,9 +17,13 @@ def run_command(
 
 
 def is_process_running(pattern: str) -> bool:
-    """Check if a process matching pattern is running."""
+    """Check if a process matching pattern is running.
+
+    Uses ps + grep to avoid matching the grep/pgrep process itself.
+    """
+    # Use ps aux | grep to find processes, then filter out grep itself
     result = subprocess.run(
-        f"pgrep -f '{pattern}'",
+        f"ps aux | grep -E '{pattern}' | grep -v grep",
         shell=True,
         capture_output=True,
     )
