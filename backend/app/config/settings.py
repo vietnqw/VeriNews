@@ -105,7 +105,6 @@ class Settings(BaseSettings):
 
     # Logging Configuration
     LOG_LEVEL: str = "INFO"
-    LOG_FILE: str = "logs/app.log"
     LOG_ROTATION: str = "500 MB"
     LOG_RETENTION: str = "10 days"
     LOG_COMPRESSION: str = "zip"

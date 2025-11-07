@@ -6,8 +6,33 @@ from __future__ import annotations
 
 
 from celery import Celery
+from celery.signals import after_setup_logger
+from loguru import logger
 
 from app.config.settings import settings
+
+
+@after_setup_logger.connect
+def setup_loguru_logging(sender=None, **kwargs):
+    """
+    Configure Loguru to handle Celery worker logging.
+
+    This function is connected to the `after_setup_logger` signal to ensure
+    that our custom logging configuration is applied after Celery sets up its
+    default loggers. It removes the default handler and adds a new sink
+    with rotation, retention, and compression policies based on app settings.
+    """
+    logger.remove()  # Remove default handler
+    logger.add(
+        "logs/worker.log",  # Dedicated log file for Celery workers
+        level=settings.LOG_LEVEL,
+        rotation=settings.LOG_ROTATION,
+        retention=settings.LOG_RETENTION,
+        compression=settings.LOG_COMPRESSION,
+        enqueue=True,  # Make it process-safe
+        backtrace=True,
+        diagnose=settings.ENVIRONMENT == "local",  # More details in local dev
+    )
 
 
 def _create_celery() -> Celery:

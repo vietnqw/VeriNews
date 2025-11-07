@@ -23,7 +23,7 @@ from app.config.database import init_db, close_db
 # Setup logging before anything else
 setup_logging(
     log_level=settings.LOG_LEVEL,
-    log_file=settings.LOG_FILE,
+    log_file="logs/app.log",
     log_rotation=settings.LOG_ROTATION,
     log_retention=settings.LOG_RETENTION,
     log_compression=settings.LOG_COMPRESSION,
