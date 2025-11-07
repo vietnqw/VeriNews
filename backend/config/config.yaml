@@ -10,12 +10,20 @@ celery:
 
 # Scheduler Configuration
 scheduler:
-  crawler_interval_minutes: 60  # How often to run the news crawler
+  crawler_interval_minutes: 15  # How often to run the news crawler
   article_expiration_hours: 24  # Articles older than this are ignored
 
 # Crawler Configuration
 crawler:
-  max_articles_per_feed: 10  # Maximum articles to fetch per RSS feed (-1 for unlimited)
+  max_articles_per_feed: 50  # Maximum articles to fetch per RSS feed (-1 for unlimited)
   max_content_length: 50000  # Maximum article content length (-1 for unlimited)
   fetch_timeout_seconds: 30  # HTTP request timeout
   user_agent: "VeriNews/1.0"  # User agent for HTTP requests
+
+# AI/ML Configuration
+ai:
+  provider: "openai"  # AI provider: openai, anthropic, local
+  embedding_model: "text-embedding-3-small"  # Embedding model to use
+  llm_model: "gpt-4o-mini"  # LLM model to use (gpt-4o-mini, gpt-4o, claude-3-5-sonnet, etc.)
+  max_retries: 3  # Maximum retry attempts for API calls
+  timeout_seconds: 30  # API request timeout

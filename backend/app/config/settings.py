@@ -64,6 +64,16 @@ class CrawlerSettings(BaseSettings):
     user_agent: str = "VeriNews/1.0"
 
 
+class AISettings(BaseSettings):
+    """AI/ML service configuration"""
+
+    provider: str = "openai"  # openai, anthropic, local
+    embedding_model: str = "text-embedding-3-small"
+    llm_model: str = "gpt-4o-mini"
+    max_retries: int = 3
+    timeout_seconds: int = 30
+
+
 class Settings(BaseSettings):
     """
     Main application settings.
@@ -112,12 +122,23 @@ class Settings(BaseSettings):
     REDIS_PORT: int = 6379
 
     # AI/ML Configuration
-    OPENAI_API_KEY: str = ""
+    AI_SERVICE_API_KEY: str = ""  # Unified API key for all AI providers
 
     # YAML-based configurations
     celery: CelerySettings = CelerySettings(**yaml_config.get("celery", {}))
     scheduler: SchedulerSettings = SchedulerSettings(**yaml_config.get("scheduler", {}))
     crawler: CrawlerSettings = CrawlerSettings(**yaml_config.get("crawler", {}))
+    ai: AISettings = AISettings(**yaml_config.get("ai", {}))
+
+    @property
+    def openai_api_key(self) -> str:
+        """Get API key for OpenAI (uses unified AI_SERVICE_API_KEY)"""
+        return self.AI_SERVICE_API_KEY
+
+    @property
+    def anthropic_api_key(self) -> str:
+        """Get API key for Anthropic (uses unified AI_SERVICE_API_KEY)"""
+        return self.AI_SERVICE_API_KEY
 
     @property
     def POSTGRES_URL(self) -> str:

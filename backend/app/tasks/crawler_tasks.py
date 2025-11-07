@@ -24,6 +24,12 @@ from app.config.settings import settings
 
 
 def _run(coro):
+    """
+    Run async coroutine in Celery worker context.
+
+    Celery workers run in fork pool mode, so each worker has its own process
+    and can safely use asyncio.run().
+    """
     return asyncio.run(coro)
 
 
@@ -78,6 +84,8 @@ def crawl_feed(feed_id: str) -> int:
                 for (url,) in result.all():
                     existing_urls.add(url)
 
+                # Collect new article IDs to process after commit
+                new_article_ids = []
                 processed = 0
                 for e in entries:
                     if e["link"] in existing_urls:
@@ -94,7 +102,8 @@ def crawl_feed(feed_id: str) -> int:
                         )
                         session.add(article)
                         await session.flush()
-                        process_article_task.delay(str(article.id))
+                        # Store article ID for processing after commit
+                        new_article_ids.append(str(article.id))
                         new_count += 1
                         processed += 1
                     except IntegrityError:
@@ -106,6 +115,19 @@ def crawl_feed(feed_id: str) -> int:
                 feed.last_fetched_at = datetime.utcnow()
                 await session.flush()
                 await session.commit()
+
+                # Enqueue processing tasks AFTER commit so articles are visible to workers
+                logger.info(
+                    f"Enqueueing {len(new_article_ids)} article processing tasks"
+                )
+                for article_id in new_article_ids:
+                    try:
+                        process_article_task.delay(article_id)
+                        logger.debug(f"Enqueued task for article {article_id}")
+                    except Exception as e:
+                        logger.error(
+                            f"Failed to enqueue task for article {article_id}: {e}"
+                        )
             return new_count
         finally:
             await engine.dispose()
@@ -127,15 +149,29 @@ def process_article_task(article_id: str) -> int:
                 aid = uuid.UUID(article_id)
                 article = await session.get(Article, aid)
                 if not article:
+                    logger.warning(f"Article {article_id} not found")
                     return 0
+
+                logger.info(f"Processing article {article_id}: {article.url}")
+
                 # Scrape content
+                logger.debug(f"Starting scrape for {article.url}")
                 content = await scrape_article_content(article.url)
+                logger.info(f"Scraped {len(content)} chars from {article.url}")
+
                 article.content = content
                 await session.flush()
+
                 # Process into chunks
+                logger.debug("Processing article into chunks")
                 created = await process_article(session, aid)
                 await session.commit()
+
+                logger.info(f"Created {created} chunks for article {article_id}")
                 return created
+        except Exception as e:
+            logger.error(f"Error processing article {article_id}: {e}", exc_info=True)
+            raise
         finally:
             await engine.dispose()
 

@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.article import Article
 from app.models.article_chunk import ArticleChunk
-from app.services.content.embedding_service import generate_embedding
+from app.services.content.embedding_service import generate_embedding_async
 from app.services.content.chunking_service import chunk_text
 
 
@@ -45,7 +45,7 @@ async def process_article(session: AsyncSession, article_id: uuid.UUID) -> int:
     chunks: List[str] = chunk_text(article.content, strategy="paragraph")
     created = 0
     for idx, chunk in enumerate(chunks):
-        embedding = generate_embedding(chunk)
+        embedding = await generate_embedding_async(chunk)
         session.add(
             ArticleChunk(
                 article_id=article.id,
