@@ -55,7 +55,12 @@ VeriNews/
 3. **Start the backend**:
    ```bash
    cd backend
-   ./scripts/start_dev.sh
+   ./scripts/verinews dev start
+   ```
+
+4. **Start the crawler** (optional, for news collection):
+   ```bash
+   ./scripts/verinews crawler start
    ```
 
 
@@ -100,11 +105,16 @@ For detailed technical information, including setup, development, and API docume
 - [x] Pre-commit setup for code quality
 - [x] Documentation
 
-### Phase 2: Core Services (In Progress)
-- [ ] News crawler service
-- [ ] Article processor
-- [ ] Embedding generator
-- [ ] Vector similarity search
+### Phase 2: Core Services ✅
+- [x] News crawler service (Celery + Redis task queue)
+- [x] RSS feed management (sync, add, remove feeds)
+- [x] Article processor with smart chunking
+  - [x] Multi-stage content extraction (trafilatura + fallbacks)
+  - [x] Intelligent paragraph-level chunking (500-2000 chars)
+  - [x] Vietnamese text optimization
+- [x] Embedding generator (OpenAI text-embedding-3-small)
+- [x] Vector similarity search (pgvector)
+- [x] Unified CLI tool for all operations
 - [ ] Claim verification service
 - [ ] Image analysis integration
 

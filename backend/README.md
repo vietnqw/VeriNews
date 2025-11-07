@@ -86,32 +86,49 @@ backend/
 
 6. **Start the development server** (from the `backend` directory):
    ```bash
-   ./scripts/start_dev.sh
+   ./scripts/verinews dev start
    ```
 
 By default, the API will be available at: http://localhost:8000
 
 ## Development
 
-### Running the Server
+### Unified CLI Tool
 
-To start the entire development environment (Docker containers, migrations, and FastAPI server), simply run the `start_dev.sh` script from the `backend` directory.
+VeriNews uses a unified CLI tool (`./scripts/verinews`) for all operations. Run from the `backend/` directory.
 
+### Quick Start Commands
+
+**Development environment:**
 ```bash
-# From backend/ directory
-./scripts/start_dev.sh
+./scripts/verinews dev start       # Start Docker + API server
+./scripts/verinews dev stop        # Stop all services
+./scripts/verinews dev reset       # Reset database (⚠️ deletes all data)
+./scripts/verinews health          # Check API health
 ```
 
-The script handles all startup logic, and the server runs with auto-reload enabled.
+**Crawler management:**
+```bash
+./scripts/verinews crawler start   # Start Celery workers + Beat scheduler
+./scripts/verinews crawler stop    # Stop crawler
+./scripts/verinews crawler status  # Check crawler status
+```
 
-### Development Scripts
+**Feed management:**
+```bash
+./scripts/verinews feeds sync                           # Sync feeds from sources.yaml
+./scripts/verinews feeds list                           # List all feeds
+./scripts/verinews feeds add SOURCE URL --topic "Topic" # Add feed manually
+./scripts/verinews feeds remove URL                     # Remove feed
+./scripts/verinews feeds set-active URL true/false      # Enable/disable feed
+```
 
-All scripts are located in `backend/scripts/` and should be run from the `backend` directory.
-
-- `start_dev.sh`: Starts Docker containers, runs migrations, and launches the FastAPI server.
-- `stop_dev.sh`: Stops the Docker containers.
-- `reset_db.sh`: **Deletes all data!** Resets the database by stopping containers, removing the data volume, and restarting everything.
-- `check_health.sh`: Pings the health check endpoints to verify the server is running correctly.
+**View logs:**
+```bash
+./scripts/verinews logs worker     # View Celery worker logs
+./scripts/verinews logs beat       # View Celery Beat scheduler logs
+./scripts/verinews logs api        # View API logs
+```
 
 ### Environment Configuration
 
@@ -276,65 +293,70 @@ The crawler consists of 4 components:
 
 News sources and their RSS feeds are defined in [`config/sources.yaml`](../config/sources.yaml).
 
-**Sync feeds to database**:
+**Sync feeds from sources.yaml to database**:
 ```bash
-# From backend/ directory
-uv run python scripts/sync_feeds.py sync
+./scripts/verinews feeds sync
 ```
 
-**List configured feeds**:
+**List all configured feeds**:
 ```bash
-uv run python scripts/sync_feeds.py list
+./scripts/verinews feeds list
 ```
 
 **Manually add a feed**:
 ```bash
-uv run python scripts/sync_feeds.py add \
-    --source-name "BBC News" \
-    --feed-url "http://feeds.bbci.co.uk/news/rss.xml" \
-    --topic "General"
+./scripts/verinews feeds add "BBC News" "http://feeds.bbci.co.uk/news/rss.xml" --topic "General"
+```
+
+**Remove a feed**:
+```bash
+./scripts/verinews feeds remove "http://feeds.bbci.co.uk/news/rss.xml"
+```
+
+**Enable or disable a feed**:
+```bash
+./scripts/verinews feeds set-active "http://feeds.bbci.co.uk/news/rss.xml" true   # Enable
+./scripts/verinews feeds set-active "http://feeds.bbci.co.uk/news/rss.xml" false  # Disable
 ```
 
 ### Starting the Crawler
 
-**Option 1: Start complete crawler environment** (recommended):
+**Start complete crawler environment** (recommended):
 ```bash
-./scripts/start_crawler.sh
+./scripts/verinews crawler start
 ```
 
-This starts Redis, Celery workers, and Celery Beat in background mode. Logs are written to `logs/celery-worker.log` and `logs/celery-beat.log`.
-
-**Option 2: Start components individually**:
-
-Start Celery workers:
-```bash
-./scripts/start_workers.sh
-```
-
-Start Celery Beat scheduler:
-```bash
-./scripts/start_beat.sh
-```
+This starts Redis (if not running), Celery workers, and Celery Beat scheduler in background mode. Logs are written to `logs/celery-worker.log` and `logs/celery-beat.log`.
 
 ### Stopping the Crawler
 
 ```bash
-# Stop workers
-./scripts/stop_workers.sh
-
-# Stop scheduler
-./scripts/stop_beat.sh
+./scripts/verinews crawler stop
 ```
+
+This gracefully stops both Celery workers and Beat scheduler.
+
+### Checking Crawler Status
+
+```bash
+./scripts/verinews crawler status
+```
+
+Shows the current status of Celery workers, Beat scheduler, and Redis.
 
 ### Monitoring
 
-**View worker logs**:
+**View worker logs in real-time**:
 ```bash
+./scripts/verinews logs worker
+# or
 tail -f logs/celery-worker.log
 ```
 
-**View scheduler logs**:
+**View scheduler logs in real-time**:
 ```bash
+./scripts/verinews logs beat
+# or
 tail -f logs/celery-beat.log
 ```
 
@@ -358,10 +380,13 @@ The crawler pipeline consists of 3 Celery tasks:
    - Enqueues `process_article_task()` for each
 
 3. **`process_article_task(article_id)`** - Processes articles
-   - Scrapes full article content
-   - Chunks content into semantic segments
-   - Generates embeddings for each chunk
-   - Stores ArticleChunk records
+   - Scrapes full article content using multi-stage extraction
+   - Chunks content into semantic segments using smart paragraph chunking:
+     - Handles both single (`\n`) and double (`\n\n`) newline formats
+     - Merges small paragraphs (target 500-2000 chars per chunk)
+     - Splits long paragraphs by sentences for optimal embedding quality
+   - Generates embeddings for each chunk (OpenAI text-embedding-3-small)
+   - Stores ArticleChunk records with vector embeddings
 
 ### Manual Task Triggering
 
@@ -374,6 +399,27 @@ Trigger a crawl for a specific feed:
 ```bash
 uv run python -c "from app.tasks.crawler_tasks import crawl_feed; crawl_feed.delay('FEED_ID_HERE')"
 ```
+
+### Batch Reprocessing Articles
+
+If you need to reprocess existing articles (e.g., after chunking logic improvements):
+
+```bash
+uv run python scripts/reprocess_articles.py
+```
+
+This script:
+- Fetches all articles with content
+- Processes them in batches of 100
+- Regenerates chunks with the current chunking strategy
+- Updates embeddings for all chunks
+- Shows progress and statistics
+
+**Use cases:**
+- After improving chunking logic
+- After changing chunk size parameters
+- To regenerate embeddings with a new model
+- To fix malformed chunks
 
 ### Configuration
 
