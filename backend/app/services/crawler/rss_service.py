@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from typing import Any, List, TypedDict
+import html
 import re
 from email.utils import parsedate_to_datetime
 
@@ -82,6 +83,10 @@ def fetch_rss_feed(feed_url: str) -> List[FeedEntry]:
     entries: List[FeedEntry] = []
     for e in parsed.entries:
         title = getattr(e, "title", "").strip()
+        # Decode HTML entities (e.g., &uacute; → ú, &aacute; → á)
+        # Feedparser usually decodes these, but some feeds may have double-encoded
+        # or improperly encoded entities that need explicit decoding
+        title = html.unescape(title)
         link = getattr(e, "link", "").strip()
         if not link:
             continue
