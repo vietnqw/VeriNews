@@ -4,7 +4,6 @@ Hybrid Retrieval Service
 Combines vector similarity search and BM25 keyword search for multi-query retrieval.
 """
 
-import asyncio
 from typing import List, Tuple
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -66,8 +65,10 @@ class HybridRetrievalService:
         else:
             tasks.append(self._empty_results())
 
-        # Run both searches in parallel
-        vector_results, bm25_results = await asyncio.gather(*tasks)
+        # Run searches sequentially to avoid SQLAlchemy session concurrency issues
+        # (both services share the same AsyncSession which doesn't support concurrent operations)
+        vector_results = await tasks[0] if tasks else []
+        bm25_results = await tasks[1] if len(tasks) > 1 else []
 
         logger.info(
             f"Hybrid search for query: vector={len(vector_results)}, bm25={len(bm25_results)}"

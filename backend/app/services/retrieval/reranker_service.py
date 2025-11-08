@@ -11,6 +11,7 @@ from typing import List
 
 from app.config.settings import settings
 from app.core.logging import get_logger
+from app.services.ai.base import LLMMessage
 from app.services.ai.factory import AIServiceFactory
 from app.services.retrieval.bm25_search_service import ChunkSearchResult
 
@@ -118,15 +119,16 @@ class RerankerService:
 
         try:
             # Call LLM with JSON mode for structured output
-            response = await self.llm.generate(
-                prompt=prompt,
+            messages = [LLMMessage(role="user", content=prompt)]
+            response = await self.llm.generate_completion(
+                messages=messages,
                 model=self.model,
                 temperature=0.1,  # Low temperature for consistent scoring
                 response_format={"type": "json_object"},
             )
 
             # Parse JSON response
-            result = json.loads(response)
+            result = json.loads(response.content)
             scores = result.get("scores", [])
 
             # Validate score count

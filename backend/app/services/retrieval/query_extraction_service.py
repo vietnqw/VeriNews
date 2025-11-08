@@ -9,6 +9,7 @@ from typing import Dict
 
 from app.config.settings import settings
 from app.core.logging import get_logger
+from app.services.ai.base import LLMMessage
 from app.services.ai.factory import AIServiceFactory
 
 logger = get_logger(__name__)
@@ -59,15 +60,16 @@ class QueryExtractionService:
 
         try:
             # Call LLM with JSON mode for structured output
-            response = await self.llm.generate(
-                prompt=prompt,
+            messages = [LLMMessage(role="user", content=prompt)]
+            response = await self.llm.generate_completion(
+                messages=messages,
                 model=self.model,
                 temperature=self.temperature,
                 response_format={"type": "json_object"},
             )
 
             # Parse JSON response
-            result = json.loads(response)
+            result = json.loads(response.content)
 
             # Validate and clean result
             clean_query = result.get("clean_query", "").strip()
