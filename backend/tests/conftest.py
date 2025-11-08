@@ -265,11 +265,110 @@ def assert_timing():
     return TimingAssertion()
 
 
+# ==================== Integration Test Fixtures (PostgreSQL + Redis) ====================
+
+
+@pytest.fixture(scope="session")
+async def postgres_db_session() -> AsyncGenerator[AsyncSession, None]:
+    """
+    Provide an async database session connected to PostgreSQL (Docker).
+
+    This fixture connects to the actual PostgreSQL database running in Docker
+    and is used for integration tests that require PostgreSQL-specific features
+    like pgvector, tsvector, etc.
+
+    Requires Docker services to be running:
+        docker compose -f docker/docker-compose.yml up -d
+    """
+    from app.config.database import engine
+
+    # Create all tables
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    # Create session
+    async_session_maker = sessionmaker(
+        engine, class_=AsyncSession, expire_on_commit=False
+    )
+
+    async with async_session_maker() as session:
+        yield session
+        await session.rollback()
+
+    # Clean up: drop all tables
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+
+
+@pytest.fixture(scope="function")
+async def postgres_session() -> AsyncGenerator[AsyncSession, None]:
+    """
+    Provide a PostgreSQL session for individual integration tests.
+
+    Unlike postgres_db_session, this fixture is function-scoped and
+    creates a fresh session for each test with automatic cleanup.
+    """
+    from app.config.database import engine
+
+    # Create all tables (in case they don't exist)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    # Create session
+    async_session_maker = sessionmaker(
+        engine, class_=AsyncSession, expire_on_commit=False
+    )
+
+    async with async_session_maker() as session:
+        yield session
+        # Rollback to clean up test data
+        await session.rollback()
+
+    # Clean up: drop all tables after test
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+
+
+@pytest.fixture(scope="function")
+async def real_redis():
+    """
+    Provide a connection to actual Redis (Docker).
+
+    This fixture connects to the real Redis instance running in Docker
+    for integration tests that need actual Redis behavior.
+
+    Requires Docker services to be running:
+        docker compose -f docker/docker-compose.yml up -d
+    """
+    import redis.asyncio as redis
+
+    client = await redis.from_url(
+        f"redis://{settings.REDIS_HOST}:{settings.REDIS_PORT}",
+        encoding="utf-8",
+        decode_responses=True,
+    )
+
+    yield client
+
+    # Cleanup: flush all keys created during test
+    await client.flushall()
+    await client.close()
+
+
 # ==================== Markers ====================
 
 
 def pytest_configure(config):
     """Configure pytest with custom markers."""
     config.addinivalue_line("markers", "unit: mark test as a unit test")
-    config.addinivalue_line("markers", "integration: mark test as an integration test")
+    config.addinivalue_line(
+        "markers", "integration: mark test as an integration test (requires Docker)"
+    )
     config.addinivalue_line("markers", "performance: mark test as a performance test")
+    config.addinivalue_line(
+        "markers", "requires_postgres: mark test as requiring PostgreSQL"
+    )
+    config.addinivalue_line("markers", "requires_redis: mark test as requiring Redis")
+    config.addinivalue_line(
+        "markers", "requires_openai: mark test as requiring OpenAI API"
+    )
