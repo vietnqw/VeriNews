@@ -59,8 +59,7 @@ class TestBM25SearchIntegration:
             title="VinTech xây nhà máy sản xuất chip tại Hà Nội",
             url="https://vnexpress.net/article123",
             published_at=datetime(2024, 1, 15, 10, 0, tzinfo=timezone.utc),
-            content_html="<p>Article content</p>",
-            content_text="VinTech announces new factory in Hanoi",
+            content="VinTech announces new factory in Hanoi with $5B investment",
         )
         postgres_session.add(article)
         await postgres_session.commit()
@@ -71,6 +70,9 @@ class TestBM25SearchIntegration:
     async def indexed_chunks(self, postgres_session, article):
         """Create and index test chunks."""
         bm25_service = BM25SearchService(session=postgres_session)
+
+        # Create a dummy embedding (1536 dimensions filled with 0.1)
+        dummy_embedding = [0.1] * 1536
 
         chunks_data = [
             "VinTech công bố kế hoạch xây dựng nhà máy sản xuất chip bán dẫn tại Hà Nội với vốn đầu tư 5 tỷ USD",
@@ -86,6 +88,7 @@ class TestBM25SearchIntegration:
                 article_id=article.id,
                 chunk_index=idx,
                 chunk_text=text,
+                embedding=dummy_embedding,  # Required field
                 article_title=article.title,
                 source_name="VnExpress",
             )
@@ -154,6 +157,9 @@ class TestBM25SearchIntegration:
         """Test batch indexing of multiple chunks."""
         bm25_service = BM25SearchService(session=postgres_session)
 
+        # Create dummy embedding
+        dummy_embedding = [0.1] * 1536
+
         # Create unindexed chunks
         chunks = []
         for i in range(10):
@@ -161,6 +167,7 @@ class TestBM25SearchIntegration:
                 article_id=article.id,
                 chunk_index=i,
                 chunk_text=f"Batch test chunk {i} về công nghệ",
+                embedding=dummy_embedding,
                 article_title=article.title,
                 source_name="VnExpress",
             )
