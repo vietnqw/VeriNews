@@ -148,7 +148,7 @@ async def test_full_pipeline(async_db_session, mock_openai_client):
 
 ## Current Status
 
-**Test Suite**: 103 tests passing | Coverage: 48% | Duration: 3.38s
+**Test Suite**: 117 tests passing | Coverage: 50% | Duration: 3.49s
 
 ### ✅ Implemented Tests (Phases 1-3)
 
@@ -160,7 +160,7 @@ async def test_full_pipeline(async_db_session, mock_openai_client):
 - PostgreSQL + pgvector integration testing
 - Async engine management for integration tests
 
-**Unit Tests (74 tests)**
+**Unit Tests (88 tests)**
 
 **Vietnamese Processor** (14 tests)
 - Compound word tokenization ("công ty" → "công_ty")
@@ -223,7 +223,21 @@ async def test_full_pipeline(async_db_session, mock_openai_client):
 - Batch size configuration
 - Vietnamese text support
 
-**Integration Tests (19 tests)**
+**Hybrid Retrieval Service** (14 tests)
+- Vector + BM25 search coordination
+- Single query hybrid search (both enabled)
+- Vector-only and BM25-only modes
+- Both searches disabled handling
+- Top-k parameter passing
+- Multi-query search (N queries → 2N result lists)
+- Empty queries handling
+- Result list ordering verification
+- Result preservation across queries
+- Vietnamese text support
+- Empty results handling
+- Search exception propagation
+
+**Integration Tests (29 tests)**
 
 **BM25 Search Service** (9 tests)
 - PostgreSQL full-text search with ts_rank_cd
