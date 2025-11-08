@@ -300,33 +300,68 @@ async def postgres_db_session() -> AsyncGenerator[AsyncSession, None]:
         await conn.run_sync(Base.metadata.drop_all)
 
 
+@pytest.fixture(scope="session")
+def postgres_tables_setup():
+    """
+    Create PostgreSQL tables once per test session (synchronous).
+
+    This runs before any async tests to avoid event loop issues.
+    """
+    from sqlalchemy import create_engine as sync_create_engine
+    from app.config.settings import settings
+
+    # Use synchronous engine for table creation
+    sync_engine = sync_create_engine(settings.POSTGRES_URL_SYNC)
+
+    # Create all tables
+    Base.metadata.create_all(sync_engine)
+
+    yield
+
+    # Cleanup: drop all tables after all tests
+    Base.metadata.drop_all(sync_engine)
+    sync_engine.dispose()
+
+
 @pytest.fixture(scope="function")
-async def postgres_session() -> AsyncGenerator[AsyncSession, None]:
+async def postgres_session(postgres_tables_setup) -> AsyncGenerator[AsyncSession, None]:
     """
     Provide a PostgreSQL session for individual integration tests.
 
-    Unlike postgres_db_session, this fixture is function-scoped and
-    creates a fresh session for each test with automatic cleanup.
+    Creates a fresh async engine per test to avoid event loop issues.
+    Tables are created once per session (sync), this just provides
+    a clean session for each test and cleans up data afterwards.
     """
-    from app.config.database import engine
+    from sqlalchemy import text
+    from app.config.settings import settings
 
-    # Create all tables (in case they don't exist)
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    # Create a new async engine for this test (avoids event loop issues)
+    test_engine = create_async_engine(
+        url=settings.POSTGRES_URL,
+        echo=False,
+        pool_pre_ping=True,
+    )
 
     # Create session
     async_session_maker = sessionmaker(
-        engine, class_=AsyncSession, expire_on_commit=False
+        test_engine, class_=AsyncSession, expire_on_commit=False
     )
 
     async with async_session_maker() as session:
         yield session
-        # Rollback to clean up test data
-        await session.rollback()
 
-    # Clean up: drop all tables after test
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+        # Cleanup: delete all data after test
+        try:
+            await session.execute(text("TRUNCATE TABLE article_chunks CASCADE"))
+            await session.execute(text("TRUNCATE TABLE articles CASCADE"))
+            await session.execute(text("TRUNCATE TABLE rss_feeds CASCADE"))
+            await session.execute(text("TRUNCATE TABLE news_sources CASCADE"))
+            await session.commit()
+        except Exception:
+            await session.rollback()
+
+    # Dispose engine after test
+    await test_engine.dispose()
 
 
 @pytest.fixture(scope="function")
