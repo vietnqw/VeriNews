@@ -148,50 +148,75 @@ async def test_full_pipeline(async_db_session, mock_openai_client):
 
 ## Current Status
 
-### Implemented Tests (Phase 1-2)
+**Test Suite**: 56 tests passing | Coverage: 40%
 
-✅ **Test Infrastructure**
-- Pytest configuration
+### ✅ Implemented Tests (Phase 1-2)
+
+**Test Infrastructure**
+- Pytest configuration with async support
 - Shared fixtures (conftest.py)
-- Mock services (OpenAI, Redis)
-- Test data factories
+- Mock services (OpenAI, Redis, Database)
+- Test data factories (Faker with Vietnamese locale)
 
-✅ **Vietnamese Processor** (20 tests)
-- Compound word tokenization
+**Vietnamese Processor** (14 tests)
+- Compound word tokenization ("công ty" → "công_ty")
 - Special characters handling
-- Mixed language support
-- Edge cases (empty, whitespace, Unicode)
+- Mixed language support (Vietnamese + English)
+- Edge cases (empty, whitespace, Unicode, very long text)
 - Configuration toggle
 
-✅ **RRF Fusion Service** (10 tests)
+**RRF Fusion Service** (10 tests)
 - Single/multiple list fusion
-- Overlapping chunks
-- Different k values
-- Mathematical correctness
+- Overlapping chunks (same chunk in multiple lists)
+- Different k parameter values
+- Mathematical correctness verification
 - Empty lists handling
+- Score monotonicity
 - Metadata preservation
 
-### Upcoming Tests (Phases 3-6)
+**Article Aggregation Service** (14 tests)
+- Chunk-to-article aggregation with score summation
+- Relevance threshold filtering
+- Max articles limit enforcement
+- Empty inputs and edge cases
+- Article metadata preservation
+- Chunk inclusion/exclusion toggle
+- Serialization (to_dict) functionality
 
-🚧 **Search Services**
-- Vector similarity search
-- BM25 keyword search
+**Retrieval Cache Service** (18 tests)
+- SHA256 hash-based cache key generation
+- Redis get/set operations (using FakeRedis)
+- Cache hit/miss scenarios
+- Disabled cache behavior
+- Cache clearing (clear_all)
+- ArticleResult serialization/deserialization
+- Unicode text handling (Vietnamese characters)
+- Special characters and emojis
+- Very long text caching
+- Empty articles list edge case
+
+### 🚧 Pending Tests (Phases 3-6)
+
+**Search Services** (requires PostgreSQL)
+- Vector similarity search (pgvector)
+- BM25 keyword search (ts_rank_cd)
 - Hybrid retrieval coordination
 
-🚧 **LLM Services**
+**LLM Services** (requires OpenAI API)
 - Query extraction
 - Batch reranking
 
-🚧 **Integration Tests**
+**Integration Tests**
 - Full pipeline E2E
-- Database integration
-- OpenAI API integration
-- Redis caching
+- Database integration (PostgreSQL + pgvector)
+- OpenAI API integration (with mocking)
+- Redis caching integration
 
-🚧 **Performance Tests**
-- Latency benchmarks
-- Throughput tests
-- Scalability tests
+**Performance Tests**
+- Pipeline latency benchmarks
+- Concurrent request handling
+- Large-scale data tests (10k+ chunks)
+- Cache hit rate optimization
 
 ## CI/CD Integration
 
