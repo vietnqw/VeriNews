@@ -148,9 +148,9 @@ async def test_full_pipeline(async_db_session, mock_openai_client):
 
 ## Current Status
 
-**Test Suite**: 117 tests passing | Coverage: 50% | Duration: 3.49s
+**Test Suite**: 127 tests passing | Coverage: 52% | Duration: 3.52s
 
-### ✅ Implemented Tests (Phases 1-3)
+### ✅ Implemented Tests (Phases 1-4)
 
 **Test Infrastructure**
 - Pytest configuration with async support
@@ -160,7 +160,7 @@ async def test_full_pipeline(async_db_session, mock_openai_client):
 - PostgreSQL + pgvector integration testing
 - Async engine management for integration tests
 
-**Unit Tests (88 tests)**
+**Unit Tests (98 tests)**
 
 **Vietnamese Processor** (14 tests)
 - Compound word tokenization ("công ty" → "công_ty")
@@ -236,6 +236,18 @@ async def test_full_pipeline(async_db_session, mock_openai_client):
 - Vietnamese text support
 - Empty results handling
 - Search exception propagation
+
+**Retrieval Orchestrator** (10 tests)
+- Full 6-stage pipeline execution
+- Query extraction disabled mode
+- Reranking disabled mode
+- Stage timing measurement accuracy
+- Empty fusion results handling
+- Batch embedding generation with correct queries
+- Multi-query hybrid search coordination
+- Reranking top 100 chunks limit
+- Vietnamese text handling
+- Service orchestration order verification
 
 **Integration Tests (29 tests)**
 
