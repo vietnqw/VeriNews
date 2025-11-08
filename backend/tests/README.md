@@ -148,15 +148,19 @@ async def test_full_pipeline(async_db_session, mock_openai_client):
 
 ## Current Status
 
-**Test Suite**: 56 tests passing | Coverage: 40%
+**Test Suite**: 103 tests passing | Coverage: 48% | Duration: 3.38s
 
-### ✅ Implemented Tests (Phase 1-2)
+### ✅ Implemented Tests (Phases 1-3)
 
 **Test Infrastructure**
 - Pytest configuration with async support
 - Shared fixtures (conftest.py)
 - Mock services (OpenAI, Redis, Database)
 - Test data factories (Faker with Vietnamese locale)
+- PostgreSQL + pgvector integration testing
+- Async engine management for integration tests
+
+**Unit Tests (74 tests)**
 
 **Vietnamese Processor** (14 tests)
 - Compound word tokenization ("công ty" → "công_ty")
@@ -195,22 +199,78 @@ async def test_full_pipeline(async_db_session, mock_openai_client):
 - Very long text caching
 - Empty articles list edge case
 
-### 🚧 Pending Tests (Phases 3-6)
+**Query Extraction Service** (13 tests)
+- LLM-based clean query extraction
+- Claims extraction from Facebook posts
+- Max claims limit enforcement
+- Empty/whitespace claim filtering
+- JSON parsing error handling
+- LLM exception fallback behavior
+- Vietnamese Unicode character support
+- Whitespace stripping
+- Prompt validation (includes post text, JSON format)
 
-**Search Services** (requires PostgreSQL)
-- Vector similarity search (pgvector)
-- BM25 keyword search (ts_rank_cd)
-- Hybrid retrieval coordination
+**Reranker Service** (15 tests)
+- LLM-based chunk reranking
+- Batch processing optimization (5 chunks per API call)
+- Score normalization to 0-1 range
+- Top-n result limiting
+- JSON parsing error handling
+- LLM exception fallback
+- Mismatched score count handling
+- Chunk metadata preservation
+- Descending score ordering
+- Batch size configuration
+- Vietnamese text support
 
-**LLM Services** (requires OpenAI API)
-- Query extraction
-- Batch reranking
+**Integration Tests (19 tests)**
 
-**Integration Tests**
-- Full pipeline E2E
-- Database integration (PostgreSQL + pgvector)
-- OpenAI API integration (with mocking)
-- Redis caching integration
+**BM25 Search Service** (9 tests)
+- PostgreSQL full-text search with ts_rank_cd
+- Vietnamese tokenization in actual database
+- Batch indexing and reindexing
+- Relevance ranking
+- Top-k limiting
+- Empty results handling
+- Search result completeness
+
+**Vector Search Service** (10 tests)
+- pgvector similarity search with cosine distance
+- IVFFlat index usage for fast ANN search
+- Top-k result limiting
+- Similarity score range validation (0-1)
+- Search result completeness
+- Empty database handling
+- Different query embeddings produce different rankings
+- Vector dimension handling (1536)
+- Normalized vs unnormalized embeddings
+- Zero vector handling
+- Monotonic score ordering
+
+### 🚧 Pending Tests (Phases 4-6)
+
+**Hybrid Search Services**
+- Hybrid retrieval service (vector + BM25 coordination)
+- Multi-query execution (clean_query + claims)
+- Sequential vs concurrent operations
+
+**Pipeline Orchestration**
+- Retrieval orchestrator (full 6-stage pipeline)
+- Performance metrics tracking
+- Error handling across stages
+
+**Content Services**
+- Chunking service (paragraph-level splitting)
+- Embedding service (OpenAI integration)
+
+**API Layer**
+- Verification API endpoint
+- Health check API endpoint
+
+**End-to-End Integration Tests**
+- Full pipeline E2E (Facebook post → articles)
+- Cache hit/miss scenarios
+- Real OpenAI API calls (mocked)
 
 **Performance Tests**
 - Pipeline latency benchmarks
