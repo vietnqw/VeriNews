@@ -9,8 +9,16 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import DateTime, ForeignKey, Integer, Text, UniqueConstraint, func
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import (
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
+from sqlalchemy.dialects.postgresql import TSVECTOR, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
@@ -43,6 +51,22 @@ class ArticleChunk(Base):
 
     # Vector Embedding (1536 dimensions for OpenAI text-embedding-3-small)
     embedding: Mapped[Vector] = mapped_column(Vector(1536), nullable=False)
+
+    # Full-Text Search Vector (for BM25 keyword search)
+    search_vector: Mapped[str | None] = mapped_column(
+        TSVECTOR, nullable=True, comment="Vietnamese-aware tsvector for BM25 search"
+    )
+
+    # Denormalized Fields (for faster retrieval without joins)
+    article_title: Mapped[str | None] = mapped_column(
+        String(512), nullable=True, comment="Denormalized from Article"
+    )
+    source_name: Mapped[str | None] = mapped_column(
+        String(256), nullable=True, comment="Denormalized from NewsSource"
+    )
+    published_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, comment="Denormalized from Article"
+    )
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
