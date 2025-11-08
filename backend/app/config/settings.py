@@ -74,6 +74,94 @@ class AISettings(BaseSettings):
     timeout_seconds: int = 30
 
 
+class VietnameseProcessingSettings(BaseSettings):
+    """Vietnamese text processing configuration"""
+
+    enabled: bool = True
+    library: str = "pyvi"
+
+
+class VectorSearchSettings(BaseSettings):
+    """Vector similarity search configuration"""
+
+    top_k: int = 100
+    similarity_metric: str = "cosine"
+
+
+class BM25SearchSettings(BaseSettings):
+    """BM25 keyword search configuration"""
+
+    top_k: int = 100
+
+
+class HybridSearchSettings(BaseSettings):
+    """Hybrid search configuration"""
+
+    enable_bm25: bool = True
+    enable_vector: bool = True
+
+
+class QueryExtractionSettings(BaseSettings):
+    """Query extraction configuration"""
+
+    enabled: bool = True
+    model: str = "gpt-4o-mini"
+    temperature: float = 0.1
+    max_claims: int = 5
+
+
+class FusionSettings(BaseSettings):
+    """Result fusion configuration"""
+
+    method: str = "rrf"
+    rrf_k: int = 60
+
+
+class RerankingSettings(BaseSettings):
+    """Reranking configuration"""
+
+    enabled: bool = True
+    model: str = "gpt-4o-mini"
+    top_n: int = 10
+    batch_size: int = 5
+    score_range: list[int] = [0, 100]
+
+
+class AggregationSettings(BaseSettings):
+    """Article aggregation configuration"""
+
+    score_threshold: float = 0.7
+    max_articles: int = 10
+    include_chunks: bool = True
+
+
+class CacheSettings(BaseSettings):
+    """Caching configuration"""
+
+    enabled: bool = True
+    ttl_hours: int = 24
+    redis_key_prefix: str = "retrieval:"
+
+    @property
+    def ttl_seconds(self) -> int:
+        """Get TTL in seconds"""
+        return self.ttl_hours * 3600
+
+
+class RetrievalSettings(BaseSettings):
+    """Retrieval pipeline configuration"""
+
+    vietnamese_processing: VietnameseProcessingSettings
+    vector_search: VectorSearchSettings
+    bm25_search: BM25SearchSettings
+    hybrid: HybridSearchSettings
+    query_extraction: QueryExtractionSettings
+    fusion: FusionSettings
+    reranking: RerankingSettings
+    aggregation: AggregationSettings
+    cache: CacheSettings
+
+
 class Settings(BaseSettings):
     """
     Main application settings.
@@ -128,6 +216,29 @@ class Settings(BaseSettings):
     scheduler: SchedulerSettings = SchedulerSettings(**yaml_config.get("scheduler", {}))
     crawler: CrawlerSettings = CrawlerSettings(**yaml_config.get("crawler", {}))
     ai: AISettings = AISettings(**yaml_config.get("ai", {}))
+
+    # Retrieval pipeline configuration
+    @property
+    def retrieval(self) -> RetrievalSettings:
+        """Get retrieval pipeline settings"""
+        retrieval_config = yaml_config.get("retrieval", {})
+        return RetrievalSettings(
+            vietnamese_processing=VietnameseProcessingSettings(
+                **retrieval_config.get("vietnamese_processing", {})
+            ),
+            vector_search=VectorSearchSettings(
+                **retrieval_config.get("vector_search", {})
+            ),
+            bm25_search=BM25SearchSettings(**retrieval_config.get("bm25_search", {})),
+            hybrid=HybridSearchSettings(**retrieval_config.get("hybrid", {})),
+            query_extraction=QueryExtractionSettings(
+                **retrieval_config.get("query_extraction", {})
+            ),
+            fusion=FusionSettings(**retrieval_config.get("fusion", {})),
+            reranking=RerankingSettings(**retrieval_config.get("reranking", {})),
+            aggregation=AggregationSettings(**retrieval_config.get("aggregation", {})),
+            cache=CacheSettings(**retrieval_config.get("cache", {})),
+        )
 
     @property
     def openai_api_key(self) -> str:
