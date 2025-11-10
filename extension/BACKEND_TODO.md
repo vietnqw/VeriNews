@@ -43,53 +43,67 @@ return VerificationResponse(
 
 ## Priority: MEDIUM
 
-### 2. Add `url` Field to Article Model
+### 2. Add `url` Field to ArticleResult
 
 **Location**:
-- `VeriNews/backend/app/models/article.py`
+- `VeriNews/backend/app/services/retrieval/article_aggregation_service.py`
 - `VeriNews/backend/app/schemas/verification.py`
 
-**Current State**: Articles have no URL field. Extension uses `article_id` as fallback.
+**Current State**: Article model **already has** `url` field, but it's not included in `ArticleResult` dataclass or response. Extension uses `article_id` as fallback.
 
 **Required Changes**:
 
-**Models** (`app/models/article.py`):
+**ArticleResult dataclass** (`app/services/retrieval/article_aggregation_service.py:32-41`):
 ```python
-class Article(Base):
-    __tablename__ = "articles"
+@dataclass
+class ArticleResult:
+    """Article-level retrieval result"""
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    rss_feed_id = Column(UUID(as_uuid=True), ForeignKey("rss_feeds.id"))
-    url = Column(String, unique=True, nullable=False, index=True)  # ADD THIS
-    title = Column(String, nullable=False)
-    # ... rest of fields
-```
-
-**Migration**:
-```bash
-cd VeriNews/backend
-uv run alembic revision --autogenerate -m "Add url field to articles table"
-uv run alembic upgrade head
-```
-
-**Schema** (`app/schemas/verification.py`):
-```python
-class ArticleResultSchema(BaseModel):
     article_id: UUID
     title: str
     source_name: str
-    published_at: datetime
+    published_at: datetime | None
+    relevance_score: float
+    relevant_chunks: List[ChunkDetail]
+    chunk_count: int
+    url: str  # ADD THIS FIELD
+
+    def to_dict(self) -> Dict:
+        """Convert to dictionary for JSON serialization"""
+        return {
+            "article_id": str(self.article_id),
+            "title": self.title,
+            "source_name": self.source_name,
+            "published_at": (
+                self.published_at.isoformat() if self.published_at else None
+            ),
+            "relevance_score": self.relevance_score,
+            "chunk_count": self.chunk_count,
+            "url": self.url,  # ADD THIS
+            "relevant_chunks": [...],
+        }
+```
+
+**ArticleAggregationService** (`aggregate_chunks()` method around line 120):
+- When querying articles from database, ensure `url` is fetched
+- Pass `url` when constructing ArticleResult objects
+
+**Schema** (`app/schemas/verification.py:21-30`):
+```python
+class ArticleResultSchema(BaseModel):
+    """Article-level retrieval result"""
+
+    article_id: str
+    title: str
+    source_name: str
+    published_at: str | None
     relevance_score: float
     chunk_count: int
     url: str  # ADD THIS FIELD
-    relevant_chunks: List[ChunkDetailSchema] = []
+    relevant_chunks: List[ChunkDetailSchema]
 ```
 
-**Service Updates** (`app/services/retrieval/article_aggregation_service.py`):
-- Query article URL when building results
-- Add to ArticleResultSchema construction
-
-**Impact**: Enables clickable links to original articles in extension.
+**Impact**: Enables clickable links to original articles in extension. No migration needed since Article.url already exists.
 
 ---
 
