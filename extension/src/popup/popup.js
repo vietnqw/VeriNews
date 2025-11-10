@@ -100,6 +100,7 @@ async function checkConnection() {
     }
   } catch (error) {
     updateConnectionStatus("Kết nối thất bại", "disconnected");
+    hideLastCrawledTime();
   } finally {
     retryButton.disabled = false;
   }

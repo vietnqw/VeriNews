@@ -32,7 +32,14 @@ async function performHealthCheck(config) {
     } catch (_) {}
 
     if (data && typeof data.status === "string") {
-      return { ok: true, status: data.status.toLowerCase() };
+      return {
+        ok: true,
+        status: data.status.toLowerCase(),
+        last_crawled_at: data.last_crawled_at,
+        pgvector: data.pgvector,
+        database: data.database,
+        api: data.api
+      };
     }
     return { ok: true, status: "healthy" };
   } catch (e) {
