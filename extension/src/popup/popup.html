@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>VeriNews</title>
+    <link rel="stylesheet" type="text/css" href="../styles/popup.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+
+  <body>
+    <div class="container">
+      <!-- Header Section -->
+      <div class="header">
+        <img src="../assets/icons/icon48.png" alt="VeriNews Logo" class="logo" />
+        <h1>VeriNews</h1>
+      </div>
+
+      <!-- Connection Status Section -->
+      <div class="card connection-section">
+        <div class="status-container">
+          <span id="connectionStatus" class="status-text">Checking...</span>
+          <div id="statusIndicator" class="status-indicator"></div>
+        </div>
+        <button id="retryButton" class="retry-button" disabled>Retry</button>
+      </div>
+
+      <!-- Main Functionality -->
+      <div class="card main-section">
+        <p>Enable VeriNews</p>
+        <label class="toggle-switch">
+          <input type="checkbox" id="toggleSwitch" />
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+    <script src="../config/config.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>
