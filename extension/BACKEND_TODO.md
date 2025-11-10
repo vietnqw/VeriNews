@@ -4,46 +4,7 @@ This document lists backend changes needed to unlock full extension features.
 
 ## Priority: HIGH
 
-### 1. Add `claims` to VerificationResponse
-
-**Location**: `VeriNews/backend/app/schemas/verification.py`
-
-**Current State**: Claims are extracted and stored in `VerificationRequest.claims` but not returned in API response.
-
-**Required Change**:
-```python
-class VerificationResponse(BaseModel):
-    articles: List[ArticleResultSchema]
-    total_time_ms: int
-    stage_timings: Dict[str, float]
-    query_count: int
-    verification: DummyVerificationResult
-    cache_hit: bool
-    claims: List[str] = []  # ADD THIS FIELD
-```
-
-**Implementation**:
-```python
-# In verification.py endpoint
-verification_request = await verification_service.get_by_id(
-    db, verification_request_id
-)
-
-return VerificationResponse(
-    articles=article_results,
-    # ... other fields ...
-    claims=verification_request.claims or [],  # ADD THIS
-    cache_hit=cached_result is not None,
-)
-```
-
-**Impact**: Enables claims display section in extension UI.
-
----
-
-## Priority: MEDIUM
-
-### 2. Add `url` Field to ArticleResult
+### 1. Add `url` Field to ArticleResult
 
 **Location**:
 - `VeriNews/backend/app/services/retrieval/article_aggregation_service.py`
@@ -109,7 +70,7 @@ class ArticleResultSchema(BaseModel):
 
 ## Priority: MEDIUM
 
-### 3. Add Normalized Similarity Score
+### 2. Add Normalized Similarity Score
 
 **Location**: `VeriNews/backend/app/schemas/verification.py`
 
@@ -143,7 +104,7 @@ normalized_scores = {
 
 ## Priority: LOW (Future Enhancement)
 
-### 4. Implement Full Verification Logic
+### 3. Implement Full Verification Logic
 
 **Location**: Create new service `app/services/verification/verdict_service.py`
 
@@ -178,7 +139,7 @@ class VerificationResult(BaseModel):
 
 ## Priority: LOW (Future Enhancement)
 
-### 5. Add Per-Criterion Scoring
+### 4. Add Per-Criterion Scoring
 
 **Location**: `app/services/verification/scoring_service.py` (new)
 
@@ -196,7 +157,7 @@ class VerificationResult(BaseModel):
 
 ## Priority: LOW (Future Enhancement)
 
-### 6. Add Contextual Judgment
+### 5. Add Contextual Judgment
 
 **Location**: `app/services/verification/context_service.py` (new)
 
@@ -216,14 +177,13 @@ class ContextualJudgment(BaseModel):
 
 ---
 
-## Migration Order
+## Implementation Order
 
 When implementing these changes:
 
-1. ✅ **Phase 1**: Add `claims` to response (quick win, no migration)
-2. ✅ **Phase 2**: Add `url` field to Article (requires migration)
-3. ✅ **Phase 3**: Add normalized similarity score (quick, no migration)
-4. 🔄 **Phase 4+**: Implement verification logic (major feature, iterative)
+1. ✅ **Phase 1**: Add `url` field to ArticleResult (quick win, no migration)
+2. ✅ **Phase 2**: Add normalized similarity score (quick, no migration)
+3. 🔄 **Phase 3+**: Implement verification logic (major feature, iterative)
 
 ---
 
