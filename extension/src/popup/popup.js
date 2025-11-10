@@ -2,7 +2,7 @@
 // CONFIG is already declared in config.js, so we just reference it
 
 // DOM elements
-let connectionStatus, statusIndicator, retryButton, toggleSwitch;
+let connectionStatus, statusIndicator, retryButton, toggleSwitch, lastCrawledSection, lastCrawledTime;
 
 document.addEventListener("DOMContentLoaded", function () {
   // Check if CONFIG is available
@@ -16,6 +16,8 @@ document.addEventListener("DOMContentLoaded", function () {
   statusIndicator = document.getElementById("statusIndicator");
   retryButton = document.getElementById("retryButton");
   toggleSwitch = document.getElementById("toggleSwitch");
+  lastCrawledSection = document.getElementById("lastCrawledSection");
+  lastCrawledTime = document.getElementById("lastCrawledTime");
 
   // Initialize connection check
   checkConnection();
@@ -79,14 +81,22 @@ async function checkConnection() {
 
     if (result && result.ok && String(result.status).toLowerCase() === "healthy") {
       updateConnectionStatus("Đã kết nối", "connected");
+      // Update last crawled time if available
+      if (result.last_crawled_at) {
+        updateLastCrawledTime(result.last_crawled_at);
+      }
     } else if (result && result.ok) {
       updateConnectionStatus("Backend không ổn định", "disconnected");
+      hideLastCrawledTime();
     } else if (result && result.status === "timeout") {
       updateConnectionStatus("Hết thời gian chờ", "disconnected");
+      hideLastCrawledTime();
     } else if (result && result.status === "no_connection") {
       updateConnectionStatus("Không có kết nối", "disconnected");
+      hideLastCrawledTime();
     } else {
       updateConnectionStatus("Kết nối thất bại", "disconnected");
+      hideLastCrawledTime();
     }
   } catch (error) {
     updateConnectionStatus("Kết nối thất bại", "disconnected");
@@ -99,5 +109,42 @@ function updateConnectionStatus(text, status) {
   if (connectionStatus && statusIndicator) {
     connectionStatus.textContent = text;
     statusIndicator.className = `status-indicator ${status}`;
+  }
+}
+
+function updateLastCrawledTime(isoTimestamp) {
+  if (!lastCrawledSection || !lastCrawledTime) return;
+
+  try {
+    const date = new Date(isoTimestamp);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    let timeAgo;
+    if (diffMins < 1) {
+      timeAgo = "Vừa xong";
+    } else if (diffMins < 60) {
+      timeAgo = `${diffMins} phút trước`;
+    } else if (diffHours < 24) {
+      timeAgo = `${diffHours} giờ trước`;
+    } else {
+      timeAgo = `${diffDays} ngày trước`;
+    }
+
+    lastCrawledTime.textContent = timeAgo;
+    lastCrawledTime.title = date.toLocaleString('vi-VN');
+    lastCrawledSection.style.display = "block";
+  } catch (error) {
+    console.error("Error formatting last crawled time:", error);
+    hideLastCrawledTime();
+  }
+}
+
+function hideLastCrawledTime() {
+  if (lastCrawledSection) {
+    lastCrawledSection.style.display = "none";
   }
 }

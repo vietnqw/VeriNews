@@ -137,6 +137,28 @@ h1 {
   border-color: transparent;
 }
 
+/* Info Section (Last Crawled) */
+.info-section {
+  animation-delay: 0.05s;
+}
+
+.info-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.info-label {
+  font-size: 12px;
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+.info-value {
+  font-size: 14px;
+  font-weight: 600;
+}
+
 /* Main Section */
 .main-section {
   display: flex;
