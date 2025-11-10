@@ -9,6 +9,8 @@ from app.models.news_source import NewsSource
 from app.models.rss_feed import RssFeed
 from app.models.article import Article
 from app.models.article_chunk import ArticleChunk
+from app.models.verification_request import VerificationRequest, VerificationStatus
+from app.models.retrieval_result import RetrievalResult
 
 __all__ = [
     "Base",
@@ -16,4 +18,7 @@ __all__ = [
     "RssFeed",
     "Article",
     "ArticleChunk",
+    "VerificationRequest",
+    "VerificationStatus",
+    "RetrievalResult",
 ]

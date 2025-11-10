@@ -2,158 +2,80 @@
 
 **AI-Powered News Verification for Social Media**
 
-VeriNews is an intelligent browser extension that combats misinformation by providing users with instant, AI-driven verification of news posts shared on social media.
+VeriNews is an intelligent browser extension that combats misinformation by providing instant, AI-driven verification of news posts shared on social media.
 
-## 🎯 Overview
+## Overview
 
-VeriNews performs sophisticated, multi-layered analysis to determine the authenticity of social media posts:
+VeriNews performs multi-layered analysis to determine the authenticity of social media posts:
 
 1. **Image Authenticity** - Detects AI-generated images
 2. **Content Similarity** - Finds relevant articles from trusted news sources
-3. **Factual Claim Alignment** - Verifies individual claims against trusted sources
-4. **Contextual Analysis** - Provides an overall credibility judgment
+3. **Factual Claim Verification** - Verifies claims against trusted sources
+4. **Credibility Scoring** - Provides an overall credibility judgment
 
-## 🏗️ Project Structure
-
-```
-VeriNews/
-├── backend/              # FastAPI backend service
-│   ├── app/             # Application code
-│   ├── alembic/         # Database migrations
-│   ├── config/          # Configuration files
-│   └── scripts/         # Development scripts
-├── docker/              # Docker configuration
-│   └── docker-compose.yml
-├── .env                 # Environment variables (not in git)
-├── .env.example         # Environment template
-└── .pre-commit-config.yaml # Pre-commit hooks configuration
-```
-
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
 - Python 3.13+
-- UV package manager ([installation](https://github.com/astral-sh/uv))
+- [UV package manager](https://github.com/astral-sh/uv)
 - Docker & Docker Compose
-- Git
 
 ### Setup
 
-1. **Clone the repository**:
-   ```bash
-   git clone <repository-url>
-   cd VeriNews
-   ```
+```bash
+# Clone and setup
+git clone <repository-url>
+cd VeriNews
+cp .env.example .env
+# Edit .env with your configuration
 
-2. **Set up environment variables**:
-   ```bash
-   cp .env.example .env
-   # Edit .env with your configuration
-   ```
+# Start backend
+cd backend
+./scripts/verinews dev start
 
-3. **Start the backend**:
-   ```bash
-   cd backend
-   ./scripts/verinews dev start
-   ```
+# Start crawler (optional)
+./scripts/verinews crawler start
+```
 
-4. **Start the crawler** (optional, for news collection):
-   ```bash
-   ./scripts/verinews crawler start
-   ```
+## Project Structure
 
+```
+VeriNews/
+├── backend/           # FastAPI backend service
+│   ├── app/          # Application code
+│   ├── tests/        # Test suite
+│   └── scripts/      # CLI tools
+└── docker/           # Docker configuration
+```
 
-## 📚 Documentation
+## Documentation
 
-For detailed technical information, including setup, development, and API documentation, please see the [Backend README](backend/README.md).
+- [Backend README](backend/README.md) - Setup, development, and API documentation
+- [Testing Guide](backend/tests/README.md) - Running and writing tests
+- [System Design](docs/system-design.md) - Architecture overview
+- [Project Description](docs/project-description.md) - Product vision
 
-- [System Design](docs/system-design.md) - Architecture and component overview
-- [Project Description](docs/project-description.md) - Product vision and features
+## Tech Stack
 
-## 🛠️ Tech Stack
+**Backend**: FastAPI, PostgreSQL + pgvector, SQLAlchemy, Celery + Redis
+**AI/ML**: OpenAI embeddings, GPT-4
+**Frontend** (Coming Soon): TypeScript, Manifest V3
 
-### Backend
-- **Framework**: FastAPI
-- **Database**: PostgreSQL 18 with pgvector
-- **ORM**: SQLAlchemy 2.0 (async)
-- **Migrations**: Alembic
-- **Logging**: Loguru
-- **Package Manager**: UV
+## Development Status
 
-### Frontend (Coming Soon)
-- **Framework**: Vanilla JS/TypeScript (Manifest V3)
-- **Build Tool**: Webpack/Vite
+- ✅ **Phase 1**: Infrastructure, database, migrations, Docker setup
+- ✅ **Phase 2**: News crawler, RSS feeds, article processing, vector search, comprehensive test suite
+- 🚧 **Phase 3**: Verification API, caching, authentication
+- 📋 **Phase 4**: Browser extension
+- 📋 **Phase 5**: Production deployment
 
-### AI/ML
-- **Embeddings**: OpenAI text-embedding-3-small
-- **LLM**: GPT-4 / Claude API
-- **Image Detection**: Third-party API
-
-
-## 🗺️ Roadmap
-
-### Phase 1: Foundation ✅
-- [x] Project structure setup
-- [x] Configuration system (.env + YAML)
-- [x] Logging with Loguru
-- [x] Database setup (PostgreSQL + pgvector)
-- [x] Alembic migrations
-- [x] FastAPI application bootstrap
-- [x] Health check endpoints
-- [x] Docker setup
-- [x] Pre-commit setup for code quality
-- [x] Documentation
-
-### Phase 2: Core Services ✅
-- [x] News crawler service (Celery + Redis task queue)
-- [x] RSS feed management (sync, add, remove feeds)
-- [x] Article processor with smart chunking
-  - [x] Multi-stage content extraction (trafilatura + fallbacks)
-  - [x] Intelligent paragraph-level chunking (500-2000 chars)
-  - [x] Vietnamese text optimization
-- [x] Embedding generator (OpenAI text-embedding-3-small)
-- [x] Vector similarity search (pgvector)
-- [x] Unified CLI tool for all operations
-- [ ] Claim verification service
-- [ ] Image analysis integration
-
-### Phase 3: API Development
-- [ ] Verification endpoints
-- [ ] Article management endpoints
-- [ ] Source management
-- [ ] Caching with Redis
-- [ ] Rate limiting
-- [ ] Authentication & authorization
-
-### Phase 4: Browser Extension
-- [ ] Extension manifest setup
-- [ ] Content scripts
-- [ ] Popup UI
-- [ ] Background service worker
-- [ ] API integration
-
-### Phase 5: Deployment
-- [ ] CI/CD pipeline
-- [ ] Production deployment
-- [ ] Monitoring & logging
-- [ ] Performance optimization
-
-## 🤝 Contributing
+## Contributing
 
 1. Create a feature branch
-2. Make your changes
-3. Write/update tests
-4. Submit a pull request
-
-## 📝 License
-
-See [LICENSE](LICENSE) file for details.
-
-## 📧 Contact
-
-For questions or feedback, please open an issue in the repository.
+2. Make your changes with tests
+3. Submit a pull request
 
 ---
 
-Built with ❤️ for fighting misinformation
+Built for fighting misinformation

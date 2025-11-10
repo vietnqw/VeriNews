@@ -27,3 +27,56 @@ ai:
   llm_model: "gpt-4o-mini"  # LLM model to use (gpt-4o-mini, gpt-4o, claude-3-5-sonnet, etc.)
   max_retries: 3  # Maximum retry attempts for API calls
   timeout_seconds: 30  # API request timeout
+
+# Retrieval Pipeline Configuration
+retrieval:
+  # Vietnamese text processing
+  vietnamese_processing:
+    enabled: true  # Enable Vietnamese-specific tokenization
+    library: "pyvi"  # Vietnamese NLP library (pyvi, underthesea)
+
+  # Vector similarity search
+  vector_search:
+    top_k: 100  # Number of chunks to retrieve
+    similarity_metric: "cosine"  # cosine, l2, inner_product
+
+  # BM25 keyword search
+  bm25_search:
+    top_k: 100  # Number of chunks to retrieve
+
+  # Hybrid search
+  hybrid:
+    enable_bm25: true  # Enable BM25 keyword search
+    enable_vector: true  # Enable vector similarity search
+
+  # Query extraction from Facebook posts
+  query_extraction:
+    enabled: true  # Enable LLM-based query extraction
+    model: "gpt-4o-mini"  # Model for query extraction
+    temperature: 0.1  # Low temperature for consistent results
+    max_claims: 5  # Maximum number of claims to extract
+
+  # Reciprocal Rank Fusion
+  fusion:
+    method: "rrf"  # Fusion method: rrf, weighted_sum
+    rrf_k: 60  # RRF constant (standard value)
+
+  # Reranking with OpenAI
+  reranking:
+    enabled: true  # Enable reranking step
+    model: "gpt-4o-mini"  # Model for reranking
+    top_n: 10  # Number of chunks to return after reranking
+    batch_size: 5  # Chunks to score per API call (balance latency vs cost)
+    score_range: [0, 100]  # Expected score range from LLM
+
+  # Article aggregation
+  aggregation:
+    score_threshold: 0.7  # Minimum chunk score to include
+    max_articles: 10  # Maximum articles to return
+    include_chunks: true  # Include chunk details in response
+
+  # Redis caching
+  cache:
+    enabled: true  # Enable result caching
+    ttl_hours: 24  # Cache TTL in hours
+    redis_key_prefix: "retrieval:"  # Redis key prefix

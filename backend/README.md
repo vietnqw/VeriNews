@@ -1,486 +1,193 @@
 # VeriNews Backend
 
-AI-powered news verification system for social media.
+AI-powered news verification system with hybrid retrieval pipeline.
 
-## Table of Contents
-
-- [Overview](#overview)
-- [Project Structure](#project-structure)
-- [Setup](#setup)
-- [Development](#development)
-- [Database Migrations](#database-migrations)
-- [API Documentation](#api-documentation)
-
-## Overview
-
-VeriNews backend is built with FastAPI and provides a robust, scalable API for news verification using AI-powered analysis.
-
-## Project Structure
-
-```
-backend/
-├── alembic/              # Database migrations
-│   ├── versions/         # Migration files
-│   └── env.py           # Alembic configuration
-├── app/
-│   ├── api/             # API routes
-│   │   ├── health.py    # Health check endpoints
-│   │   └── main.py      # Main router
-│   ├── config/          # Configuration modules
-│   │   ├── database.py  # Database setup
-│   │   └── settings.py  # Application settings
-│   ├── core/            # Core utilities
-│   │   └── logging.py   # Logging configuration
-│   ├── models/          # SQLAlchemy models
-│   │   └── base.py      # Base model class
-│   ├── schemas/         # Pydantic schemas
-│   ├── services/        # Business logic
-│   └── main.py          # FastAPI application
-├── config/              # YAML configuration
-│   └── config.yaml      # Application settings
-├── logs/                # Log files (production)
-├── scripts/             # Utility scripts
-├── pyproject.toml       # Project dependencies
-└── alembic.ini         # Alembic configuration
-
-```
-
-## Setup
+## Quick Start
 
 ### Prerequisites
 
 - Python 3.13+
-- UV package manager
+- [UV package manager](https://github.com/astral-sh/uv)
 - Docker & Docker Compose
 
 ### Installation
 
-1. **Clone the repository and navigate to the root**:
-   ```bash
-   git clone <repository-url>
-   cd VeriNews
-   ```
-
-2. **Set up environment variables**:
-   ```bash
-   cp .env.example .env
-   # Edit .env with your configuration
-   ```
-
-3. **Install dependencies using UV** (from the `backend` directory):
-   ```bash
-   cd backend
-   uv sync
-   ```
-
-4. **Start Docker services** (from the project root):
-   ```bash
-   # This is handled by the start_dev.sh script, but can be run manually
-   docker compose -f docker/docker-compose.yml up -d
-   ```
-
-5. **Run database migrations** (from the `backend` directory):
-   ```bash
-   uv run alembic upgrade head
-   ```
-
-6. **Start the development server** (from the `backend` directory):
-   ```bash
-   ./scripts/verinews dev start
-   ```
-
-By default, the API will be available at: http://localhost:8000
-
-## Development
-
-### Unified CLI Tool
-
-VeriNews uses a unified CLI tool (`./scripts/verinews`) for all operations. Run from the `backend/` directory.
-
-### Quick Start Commands
-
-**Development environment:**
 ```bash
-./scripts/verinews dev start       # Start Docker + API server
-./scripts/verinews dev stop        # Stop all services
-./scripts/verinews dev reset       # Reset database (⚠️ deletes all data)
-./scripts/verinews health          # Check API health
+# From VeriNews root
+cp .env.example .env
+# Edit .env with your API keys and configuration
+
+# Install dependencies
+cd backend
+uv sync
+
+# Start services and API
+./scripts/verinews dev start
+
+# Run migrations (if needed)
+uv run alembic upgrade head
 ```
 
-**Crawler management:**
+The API will be available at http://localhost:8000
+
+## CLI Commands
+
+VeriNews provides a unified CLI tool: `./scripts/verinews`
+
+### Development
+
 ```bash
-./scripts/verinews crawler start   # Start Celery workers + Beat scheduler
-./scripts/verinews crawler stop    # Stop crawler
-./scripts/verinews crawler status  # Check crawler status
+./scripts/verinews dev start        # Start Docker + API server
+./scripts/verinews dev stop         # Stop all services
+./scripts/verinews dev reset        # Reset database (⚠️ deletes data)
+./scripts/verinews health           # Check API health
 ```
 
-**Feed management:**
+### Crawler
+
 ```bash
-./scripts/verinews feeds sync                           # Sync feeds from sources.yaml
-./scripts/verinews feeds list                           # List all feeds
-./scripts/verinews feeds add SOURCE URL --topic "Topic" # Add feed manually
-./scripts/verinews feeds remove URL                     # Remove feed
-./scripts/verinews feeds set-active URL true/false      # Enable/disable feed
+./scripts/verinews crawler start    # Start Celery workers + Beat scheduler
+./scripts/verinews crawler stop     # Stop crawler
+./scripts/verinews crawler status   # Check crawler status
 ```
 
-**View logs:**
+### RSS Feeds
+
 ```bash
-./scripts/verinews logs worker     # View Celery worker logs
-./scripts/verinews logs beat       # View Celery Beat scheduler logs
-./scripts/verinews logs api        # View API logs
+./scripts/verinews feeds sync                              # Sync from sources.yaml
+./scripts/verinews feeds list                              # List all feeds
+./scripts/verinews feeds add SOURCE URL --topic "Topic"    # Add feed
+./scripts/verinews feeds remove URL                        # Remove feed
+./scripts/verinews feeds set-active URL true/false         # Enable/disable
 ```
 
-### Environment Configuration
+### Logs
 
-Configuration is split into two files:
-
-1. **`.env`** (Project root): Infrastructure settings (database, API keys, secrets)
-2. **`config/config.yaml`**: Application logic settings (scoring weights, thresholds)
-
-#### `.env` Variables
-
-```env
-# General
-PROJECT_NAME=VeriNews
-ENVIRONMENT=local
-API_PREFIX=/api/v1
-
-# Server
-BACKEND_HOST=0.0.0.0
-BACKEND_PORT=8000
-BACKEND_CORS_ORIGINS=["*"]
-SECRET_KEY=your_secret_key
-
-# Logging
-LOG_LEVEL=INFO
-LOG_FILE=logs/app.log
-
-# Database
-POSTGRES_HOST=localhost
-POSTGRES_PORT=5432
-POSTGRES_USER=verinews_user
-POSTGRES_PASSWORD=verinews_password
-POSTGRES_DB=verinews_db
-
-# AI/ML
-OPENAI_API_KEY=your_openai_api_key
-```
-
-### Docker Services
-
-The `start_dev.sh` and `stop_dev.sh` scripts manage the Docker services for you. The services are defined in `docker/docker-compose.yml`.
-
-**Manual Docker Commands** (run from the project root):
-
-**Start services**:
 ```bash
-docker compose -f docker/docker-compose.yml up -d
+./scripts/verinews logs worker      # Celery worker logs
+./scripts/verinews logs beat        # Celery Beat scheduler logs
+./scripts/verinews logs api         # API server logs
 ```
 
-**Stop services**:
-```bash
-docker compose -f docker/docker-compose.yml down
-```
+## Configuration
 
-**Stop and remove volumes** (⚠️ deletes all data):
-```bash
-docker compose -f docker/docker-compose.yml down -v
-```
+### Environment Variables
 
-**Check status**:
-```bash
-docker compose -f docker/docker-compose.yml ps
-```
+Configuration is split between:
+- **`.env`** (root): Infrastructure settings (database, API keys, secrets)
+- **`config/config.yaml`**: Application settings (weights, thresholds)
 
-### Adminer Database UI
+See `.env.example` for required environment variables.
 
-Access Adminer at: http://localhost:8080.The default Adminer database credentials below are defined in the `.env` file and can be changed as needed.
+### Database
 
-- **Server**: postgres
-- **Username**: verinews_user
-- **Password**: verinews_password
-- **Database**: verinews_db
+Access Adminer UI at http://localhost:8080
 
+Default credentials (from `.env`):
+- Server: `postgres`
+- Username: `verinews_user`
+- Password: `verinews_password`
+- Database: `verinews_db`
 
 ## Database Migrations
 
-### Create a Migration
-
 ```bash
-# Auto-generate migration from model changes
-uv run alembic revision --autogenerate -m "description_of_changes"
+# Create migration
+uv run alembic revision --autogenerate -m "description"
 
-# Create empty migration
-uv run alembic revision -m "description_of_changes"
-```
-
-### Apply Migrations
-
-```bash
-# Upgrade to latest
+# Apply migrations
 uv run alembic upgrade head
 
-# Upgrade one version
-uv run alembic upgrade +1
-
-# Downgrade one version
-uv run alembic downgrade -1
-```
-
-### Check Migration Status
-
-```bash
-# Current version
+# Check status
 uv run alembic current
-
-# Migration history
-uv run alembic history
-
-# Check for pending migrations
-uv run alembic check
 ```
 
 ## API Documentation
 
-### Interactive Documentation
-
 - **Swagger UI**: http://localhost:8000/api/v1/docs
 - **ReDoc**: http://localhost:8000/api/v1/redoc
 
-### Health Check Endpoints
+### Health Check
 
-**Full Health Check**:
 ```bash
 curl http://localhost:8000/api/v1/health
 ```
 
-Response:
-```json
-{
-  "status": "healthy",
-  "api": "running",
-  "database": "connected",
-  "pgvector": "available (v0.8.1)"
-}
+## Architecture
+
+### Project Structure
+
+```
+backend/
+├── app/
+│   ├── api/              # API routes (health, verification)
+│   ├── config/           # Database and settings
+│   ├── core/             # Logging utilities
+│   ├── models/           # SQLAlchemy models
+│   ├── schemas/          # Pydantic schemas
+│   ├── services/         # Business logic
+│   │   ├── ai/           # LLM providers (OpenAI)
+│   │   ├── cache/        # Redis caching
+│   │   ├── content/      # Chunking, embeddings
+│   │   ├── crawler/      # RSS, scraping
+│   │   ├── repository/   # Data access layer
+│   │   └── retrieval/    # Hybrid search pipeline
+│   └── tasks/            # Celery tasks
+├── alembic/              # Database migrations
+├── config/               # YAML configuration
+├── scripts/              # CLI tools
+└── tests/                # Test suite
 ```
 
-**Simple Health Check**:
-```bash
-curl http://localhost:8000/api/v1/health/simple
-```
+### Retrieval Pipeline
 
-Response:
-```json
-{
-  "status": "ok"
-}
-```
+The hybrid retrieval system combines vector and keyword search:
 
-## Crawler & Task Queue
+1. **Query Extraction** - Clean query + factual claims (LLM)
+2. **Embedding Generation** - Convert queries to vectors (OpenAI)
+3. **Hybrid Search** - Vector (pgvector) + BM25 (PostgreSQL FTS)
+4. **Fusion** - Reciprocal Rank Fusion (RRF)
+5. **Reranking** - LLM-based relevance scoring
+6. **Aggregation** - Chunk-to-article grouping with caching
 
-VeriNews uses Celery with Redis for background task processing to crawl news feeds.
+### Crawler Pipeline
 
-### Architecture
+Background tasks for news collection (Celery + Redis):
 
-The crawler consists of 4 components:
+1. **Scheduler** - Triggers crawls periodically (Celery Beat)
+2. **RSS Parsing** - Fetches and parses RSS feeds
+3. **Article Scraping** - Extracts full content (trafilatura)
+4. **Chunking** - Intelligent paragraph-level splitting (500-2000 chars)
+5. **Embedding** - Generates and stores vectors (OpenAI)
 
-1. **Redis** - Message broker and result backend
-2. **Celery Workers** - Execute crawling tasks in parallel
-3. **Celery Beat** - Scheduler for periodic crawls
-4. **FastAPI App** - Main API server
-
-### RSS Feed Configuration
-
-News sources and their RSS feeds are defined in [`config/sources.yaml`](../config/sources.yaml).
-
-**Sync feeds from sources.yaml to database**:
-```bash
-./scripts/verinews feeds sync
-```
-
-**List all configured feeds**:
-```bash
-./scripts/verinews feeds list
-```
-
-**Manually add a feed**:
-```bash
-./scripts/verinews feeds add "BBC News" "http://feeds.bbci.co.uk/news/rss.xml" --topic "General"
-```
-
-**Remove a feed**:
-```bash
-./scripts/verinews feeds remove "http://feeds.bbci.co.uk/news/rss.xml"
-```
-
-**Enable or disable a feed**:
-```bash
-./scripts/verinews feeds set-active "http://feeds.bbci.co.uk/news/rss.xml" true   # Enable
-./scripts/verinews feeds set-active "http://feeds.bbci.co.uk/news/rss.xml" false  # Disable
-```
-
-### Starting the Crawler
-
-**Start complete crawler environment** (recommended):
-```bash
-./scripts/verinews crawler start
-```
-
-This starts Redis (if not running), Celery workers, and Celery Beat scheduler in background mode. Logs are written to `logs/celery-worker.log` and `logs/celery-beat.log`.
-
-### Stopping the Crawler
-
-```bash
-./scripts/verinews crawler stop
-```
-
-This gracefully stops both Celery workers and Beat scheduler.
-
-### Checking Crawler Status
-
-```bash
-./scripts/verinews crawler status
-```
-
-Shows the current status of Celery workers, Beat scheduler, and Redis.
-
-### Monitoring
-
-**View worker logs in real-time**:
-```bash
-./scripts/verinews logs worker
-# or
-tail -f logs/celery-worker.log
-```
-
-**View scheduler logs in real-time**:
-```bash
-./scripts/verinews logs beat
-# or
-tail -f logs/celery-beat.log
-```
-
-**Monitor with Flower** (web UI):
-```bash
-uv run celery -A app.celery_app flower
-```
-Then visit: http://localhost:5555
-
-### Crawler Tasks
-
-The crawler pipeline consists of 3 Celery tasks:
-
-1. **`kickoff_all_crawls()`** - Scheduled task (runs every N minutes)
-   - Queries all active RSS feeds
-   - Enqueues `crawl_feed()` for each
-
-2. **`crawl_feed(feed_id)`** - Fetches RSS entries
-   - Parses RSS feed
-   - Creates Article records for new entries
-   - Enqueues `process_article_task()` for each
-
-3. **`process_article_task(article_id)`** - Processes articles
-   - Scrapes full article content using multi-stage extraction
-   - Chunks content into semantic segments using smart paragraph chunking:
-     - Handles both single (`\n`) and double (`\n\n`) newline formats
-     - Merges small paragraphs (target 500-2000 chars per chunk)
-     - Splits long paragraphs by sentences for optimal embedding quality
-   - Generates embeddings for each chunk (OpenAI text-embedding-3-small)
-   - Stores ArticleChunk records with vector embeddings
-
-### Manual Task Triggering
-
-Trigger a manual crawl for all feeds:
-```bash
-uv run python -c "from app.tasks.crawler_tasks import kickoff_all_crawls; kickoff_all_crawls.delay()"
-```
-
-Trigger a crawl for a specific feed:
-```bash
-uv run python -c "from app.tasks.crawler_tasks import crawl_feed; crawl_feed.delay('FEED_ID_HERE')"
-```
-
-### Batch Reprocessing Articles
-
-If you need to reprocess existing articles (e.g., after chunking logic improvements):
-
-```bash
-uv run python scripts/reprocess_articles.py
-```
-
-This script:
-- Fetches all articles with content
-- Processes them in batches of 100
-- Regenerates chunks with the current chunking strategy
-- Updates embeddings for all chunks
-- Shows progress and statistics
-
-**Use cases:**
-- After improving chunking logic
-- After changing chunk size parameters
-- To regenerate embeddings with a new model
-- To fix malformed chunks
-
-### Configuration
-
-Crawler settings are in [`config/config.yaml`](../config/config.yaml):
-
-```yaml
-celery:
-  broker_url: redis://localhost:6379/0
-  result_backend: redis://localhost:6379/0
-  worker_count: 4
-  task_time_limit: 300
-
-scheduler:
-  crawler_interval_minutes: 60
-
-crawler:
-  fetch_timeout_seconds: 30
-  max_articles_per_feed: 100
-  max_content_length: 50000
-  user_agent: "VeriNews/1.0"
-```
-
-## Logging
-
-Logs are configured using Loguru:
-
-- **Development** (`ENVIRONMENT=local`): Console output with colors
-- **Production** (`ENVIRONMENT=production`): Console + file rotation
-
-Log files are stored in `logs/` directory with:
-- Rotation: 500 MB
-- Retention: 10 days
-- Compression: zip
+RSS feeds are configured in `config/sources.yaml`.
 
 ## Testing
 
 ```bash
-# Run tests (when test suite is added)
-uv run pytest
+# Run all tests
+pytest tests/
 
 # Run with coverage
-uv run pytest --cov=app
+pytest tests/ --cov=app --cov-report=html
+
+# Run specific tests
+pytest tests/unit/
+pytest tests/integration/
 ```
+
+See [tests/README.md](tests/README.md) for detailed testing guide.
 
 ## Code Quality
 
-The project uses `ruff` for linting and formatting, enforced by `pre-commit` hooks.
+Pre-commit hooks with `ruff` linting and formatting:
 
-**Run pre-commit on all files**:
 ```bash
-# From backend/ directory
+# Run on all files
 uv run pre-commit run --all-files
-```
 
-**Run linter**:
-```bash
+# Manual checks
 uv run ruff check .
-```
-
-**Run formatter**:
-```bash
 uv run ruff format .
 ```
 
@@ -489,11 +196,8 @@ uv run ruff format .
 ### Database Connection Failed
 
 ```bash
-# Check if PostgreSQL is running
+# Check PostgreSQL status
 docker compose -f docker/docker-compose.yml ps
-
-# Check logs
-docker logs verinews-postgres
 
 # Restart database
 docker compose -f docker/docker-compose.yml restart postgres
@@ -502,22 +206,24 @@ docker compose -f docker/docker-compose.yml restart postgres
 ### Port Already in Use
 
 ```bash
-# Find process using port 8000
+# Find and kill process
 lsof -i :8000
-
-# Kill the process
 kill -9 <PID>
 ```
 
 ### Migration Issues
 
 ```bash
-# Check current migration status
+# Check migration status
 uv run alembic current
-
-# Check for inconsistencies
 uv run alembic check
 
-# If needed, stamp to a specific version (e.g., 'head')
+# Force stamp to specific version
 uv run alembic stamp head
 ```
+
+## Additional Resources
+
+- [AI Service Documentation](app/services/ai/README.md)
+- [System Design](../docs/system-design.md)
+- [Project Description](../docs/project-description.md)

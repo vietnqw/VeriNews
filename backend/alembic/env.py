@@ -18,6 +18,8 @@ from app.core.logging import setup_logging
 from app.config.settings import settings
 from app.models.base import Base
 
+# Import all models for Alembic autogenerate
+
 
 # This is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -31,7 +33,7 @@ if config.config_file_name is not None:
 # Setup application logging
 setup_logging(
     log_level=settings.LOG_LEVEL,
-    log_file=settings.LOG_FILE,
+    log_file="logs/alembic.log",
     log_rotation=settings.LOG_ROTATION,
     log_retention=settings.LOG_RETENTION,
     log_compression=settings.LOG_COMPRESSION,
