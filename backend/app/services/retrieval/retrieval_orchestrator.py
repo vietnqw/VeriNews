@@ -44,7 +44,7 @@ class RetrievalOrchestrator:
         self.hybrid_service = HybridRetrievalService(session)
         self.fusion_service = FusionService()
         self.reranker_service = RerankerService()
-        self.aggregation_service = ArticleAggregationService()
+        self.aggregation_service = ArticleAggregationService(db=session)
 
     async def retrieve(self, post_text: str) -> Dict:
         """
@@ -133,7 +133,7 @@ class RetrievalOrchestrator:
 
         # Stage 6: Article Aggregation
         t6 = time.time()
-        articles = self.aggregation_service.aggregate_to_articles(reranked_chunks)
+        articles = await self.aggregation_service.aggregate_to_articles(reranked_chunks)
 
         timings["aggregation"] = (time.time() - t6) * 1000
         logger.info(

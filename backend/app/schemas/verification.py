@@ -26,6 +26,8 @@ class ArticleResultSchema(BaseModel):
     source_name: str
     published_at: str | None
     relevance_score: float
+    similarity_score: float
+    url: str
     chunk_count: int
     relevant_chunks: List[ChunkDetailSchema]
 
@@ -66,6 +68,8 @@ class VerificationResponse(BaseModel):
                         "source_name": "VnExpress",
                         "published_at": "2024-01-15T10:30:00",
                         "relevance_score": 2.45,
+                        "similarity_score": 1.0,
+                        "url": "https://vnexpress.net/vintech-cong-bo-du-an-nha-may-moi-123456.html",
                         "chunk_count": 3,
                         "relevant_chunks": [],
                     }

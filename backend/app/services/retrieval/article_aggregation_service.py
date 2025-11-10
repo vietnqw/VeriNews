@@ -37,6 +37,8 @@ class ArticleResult:
     source_name: str
     published_at: datetime | None
     relevance_score: float
+    similarity_score: float
+    url: str
     relevant_chunks: List[ChunkDetail]
     chunk_count: int
 
@@ -50,6 +52,8 @@ class ArticleResult:
                 self.published_at.isoformat() if self.published_at else None
             ),
             "relevance_score": self.relevance_score,
+            "similarity_score": self.similarity_score,
+            "url": self.url,
             "chunk_count": self.chunk_count,
             "relevant_chunks": [
                 {
@@ -73,12 +77,13 @@ class ArticleAggregationService:
     - Articles with multiple high-quality chunks rank higher
     """
 
-    def __init__(self):
+    def __init__(self, db=None):
         self.score_threshold = settings.retrieval.aggregation.score_threshold
         self.max_articles = settings.retrieval.aggregation.max_articles
         self.include_chunks = settings.retrieval.aggregation.include_chunks
+        self.db = db
 
-    def aggregate_to_articles(
+    async def aggregate_to_articles(
         self, chunks: List[ChunkSearchResult]
     ) -> List[ArticleResult]:
         """
@@ -129,15 +134,39 @@ class ArticleAggregationService:
                     "published_at": None,  # We don't have this in ChunkSearchResult
                 }
 
+        # Fetch article URLs from database if available
+        article_urls = {}
+        if self.db and article_scores:
+            from sqlalchemy import select
+            from app.models.article import Article
+
+            article_ids = list(article_scores.keys())
+            result = await self.db.execute(
+                select(Article.id, Article.url).where(Article.id.in_(article_ids))
+            )
+            article_urls = {row.id: row.url for row in result.all()}
+
+        # Calculate max score for normalization (0-1 range)
+        max_score = (
+            max(data["score"] for data in article_scores.values())
+            if article_scores
+            else 1.0
+        )
+
         # Build ArticleResult objects
         articles = []
         for article_id, data in article_scores.items():
+            # Normalize score to 0-1 range (similarity_score)
+            similarity_score = data["score"] / max_score if max_score > 0 else 0.0
+
             article_result = ArticleResult(
                 article_id=article_id,
                 title=data["metadata"]["title"],
                 source_name=data["metadata"]["source_name"],
                 published_at=data["metadata"]["published_at"],
                 relevance_score=data["score"],
+                similarity_score=similarity_score,
+                url=article_urls.get(article_id, ""),  # Empty string if not found
                 relevant_chunks=data["chunks"] if self.include_chunks else [],
                 chunk_count=len(data["chunks"]),
             )
