@@ -21,6 +21,7 @@ from app.services.crawler.processor_service import process_article
 from app.services.crawler.scraper_service import scrape_article_content
 from app.services.crawler.rss_service import fetch_rss_feed
 from app.config.settings import settings
+from app.services.cache.retrieval_cache import RetrievalCache
 
 
 def _run(coro):
@@ -42,6 +43,13 @@ def kickoff_all_crawls() -> int:
     async def _inner() -> int:
         count = 0
         try:
+            # Clear the retrieval cache at the start of the crawl cycle
+            logger.info("Clearing retrieval cache before starting crawl cycle...")
+            cache = RetrievalCache()
+            deleted_count = await cache.clear_all()
+            logger.info(f"Cleared {deleted_count} cache entries.")
+            await cache.close()
+
             async with async_session_maker() as session:
                 result = await session.execute(select(RssFeed).where(RssFeed.is_active))
                 feeds: List[RssFeed] = list(result.scalars().all())

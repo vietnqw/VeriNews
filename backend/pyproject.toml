@@ -1,6 +1,6 @@
 [project]
 name = "verinews"
-version = "0.1.0"
+version = "2.0.0"
 description = "AI-powered news verification system for social media"
 readme = "README.md"
 authors = [{ name = "Viet Ngo Quang", email = "vietnq.work@gmail.com" }]
