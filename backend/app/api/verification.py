@@ -54,15 +54,18 @@ async def verify_post(
         # Initialize cache
         cache = RetrievalCache()
 
-        # Check cache first
-        cached_result = await cache.get(request.text)
-        if cached_result:
-            logger.info("Returning cached result")
-            return VerificationResponse(
-                **cached_result,
-                verification=DummyVerificationResult(),
-                cache_hit=True,
-            )
+        # Check cache first (unless cache_bypass is True)
+        if not request.cache_bypass:
+            cached_result = await cache.get(request.text)
+            if cached_result:
+                logger.info("Returning cached result")
+                return VerificationResponse(
+                    **cached_result,
+                    verification=DummyVerificationResult(),
+                    cache_hit=True,
+                )
+        else:
+            logger.info("Cache bypass requested, forcing re-verification")
 
         # Run retrieval pipeline
         orchestrator = RetrievalOrchestrator(db)

@@ -80,9 +80,10 @@ function adaptVeriNewsResponse(veriNewsData) {
 /**
  * Calls VeriNews verification API
  * @param {string} content - The text content to verify
+ * @param {boolean} cacheBypass - If true, bypass cache and force re-verification
  * @returns {Promise<Object>} Verification result in MVP format
  */
-async function callVerifyAPI(content) {
+async function callVerifyAPI(content, cacheBypass = false) {
   try {
     const response = await fetch(`${CONFIG.BACKEND_BASE_URL}/api/v1/verify`, {
       method: "POST",
@@ -90,7 +91,8 @@ async function callVerifyAPI(content) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        text: content  // VeriNews uses 'text' not 'content'
+        text: content,  // VeriNews uses 'text' not 'content'
+        cache_bypass: cacheBypass  // Add cache_bypass parameter
       }),
     });
 

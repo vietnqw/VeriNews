@@ -297,11 +297,44 @@ input:checked + .slider:before {
   border-top: 1px solid #e4e6eb;
   padding-top: 10px;
   margin-top: 15px;
-  text-align: right;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.vn-refresh-button {
+  background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 5px rgba(52, 152, 219, 0.3);
+}
+
+.vn-refresh-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #2980b9 0%, #2471a3 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(52, 152, 219, 0.4);
+}
+
+.vn-refresh-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .vn-footer-time {
   font-size: 12px;
   color: #8a8d91;
   font-style: italic;
+}
+
+.vn-footer-cache {
+  font-size: 12px;
+  color: #8a8d91;
+  font-weight: 600;
 }

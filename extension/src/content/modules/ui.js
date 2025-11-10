@@ -260,6 +260,40 @@ function showContentPopup(content, apiResponse) {
     const footer = document.createElement("div");
     footer.className = "vn-modal-footer";
 
+    // Add refresh button for re-verification
+    const refreshButton = document.createElement("button");
+    refreshButton.className = "vn-refresh-button";
+    refreshButton.innerHTML = "🔄 Xác minh lại";
+    refreshButton.title = "Bỏ qua cache và xác minh lại";
+
+    refreshButton.addEventListener("click", async () => {
+      refreshButton.disabled = true;
+      refreshButton.innerHTML = "⏳ Đang xác minh...";
+
+      try {
+        // Import callVerifyAPI from api.js
+        const { callVerifyAPI } = await import(chrome.runtime.getURL("src/content/modules/api.js"));
+
+        // Call API with cache_bypass = true
+        const newApiResponse = await callVerifyAPI(content, true);
+
+        // Close current modal
+        const existingOverlay = document.querySelector(".vn-modal-overlay");
+        if (existingOverlay) {
+          existingOverlay.remove();
+        }
+
+        // Show updated popup with new data
+        showContentPopup(content, newApiResponse);
+      } catch (error) {
+        console.error("Error during re-verification:", error);
+        refreshButton.disabled = false;
+        refreshButton.innerHTML = "❌ Thất bại - Thử lại";
+      }
+    });
+
+    footer.appendChild(refreshButton);
+
     if (apiResponse && apiResponse._veriNewsMetadata) {
       const timeMs = apiResponse._veriNewsMetadata.total_time_ms;
       const timeSec = (timeMs / 1000).toFixed(2);
@@ -267,6 +301,12 @@ function showContentPopup(content, apiResponse) {
       timeText.className = "vn-footer-time";
       timeText.innerText = `Thời gian xác minh: ${timeSec}s`;
       footer.appendChild(timeText);
+
+      // Add cache status indicator
+      const cacheStatus = document.createElement("span");
+      cacheStatus.className = "vn-footer-cache";
+      cacheStatus.innerText = apiResponse._veriNewsMetadata.cache_hit ? " (từ cache)" : " (mới)";
+      footer.appendChild(cacheStatus);
     }
 
     modal.appendChild(footer);

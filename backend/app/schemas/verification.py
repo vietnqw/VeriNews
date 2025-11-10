@@ -38,6 +38,9 @@ class VerificationRequest(BaseModel):
     text: str = Field(
         ..., min_length=10, max_length=10000, description="Facebook post text to verify"
     )
+    cache_bypass: bool = Field(
+        default=False, description="If True, bypass cache and force re-verification"
+    )
 
 
 class DummyVerificationResult(BaseModel):
