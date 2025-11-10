@@ -13,7 +13,6 @@ function showContentPopup(content, apiResponse) {
 
   const closeButton = document.createElement("button");
   closeButton.className = "vn-modal-close";
-  closeButton.innerHTML = "&times;"; // The 'X' symbol
   modal.appendChild(closeButton);
 
   if (!apiResponse) {
@@ -257,6 +256,20 @@ function showContentPopup(content, apiResponse) {
     contentContainer.appendChild(contentParagraph);
     modal.appendChild(contentContainer);
   }
+    // --- Modal Footer ---
+    const footer = document.createElement("div");
+    footer.className = "vn-modal-footer";
+
+    if (apiResponse && apiResponse._veriNewsMetadata) {
+      const timeMs = apiResponse._veriNewsMetadata.total_time_ms;
+      const timeSec = (timeMs / 1000).toFixed(2);
+      const timeText = document.createElement("span");
+      timeText.className = "vn-footer-time";
+      timeText.innerText = `Thời gian xác minh: ${timeSec}s`;
+      footer.appendChild(timeText);
+    }
+
+    modal.appendChild(footer);
 
   // --- Assemble the Popup ---
   overlay.appendChild(modal);
@@ -315,7 +328,7 @@ async function createOverlay(target, type) {
 
   const buttonImg = document.createElement("img");
   buttonImg.src = chrome.runtime.getURL("src/assets/images/verify_button.png");
-  buttonImg.alt = "Verify";
+  buttonImg.alt = "Xác minh";
   buttonImg.className = `vn-verify-image ${type}`;
   button.appendChild(buttonImg);
 
@@ -341,7 +354,7 @@ async function createOverlay(target, type) {
     }
     showContentPopup(extracted, apiResponse);
 
-    buttonImg.alt = "Verify";
+    buttonImg.alt = "Xác minh";
     button.disabled = false;
   });
 

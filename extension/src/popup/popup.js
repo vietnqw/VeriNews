@@ -7,7 +7,7 @@ let connectionStatus, statusIndicator, retryButton, toggleSwitch;
 document.addEventListener("DOMContentLoaded", function () {
   // Check if CONFIG is available
   if (!window.CONFIG) {
-    updateConnectionStatus("Config Error", "disconnected");
+    updateConnectionStatus("Lỗi cấu hình", "disconnected");
     return;
   }
 
@@ -63,7 +63,7 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 async function checkConnection() {
-  updateConnectionStatus("Checking...", "checking");
+  updateConnectionStatus("Đang kiểm tra...", "checking");
   retryButton.disabled = true;
 
   try {
@@ -78,18 +78,18 @@ async function checkConnection() {
     });
 
     if (result && result.ok && String(result.status).toLowerCase() === "healthy") {
-      updateConnectionStatus("Connected", "connected");
+      updateConnectionStatus("Đã kết nối", "connected");
     } else if (result && result.ok) {
-      updateConnectionStatus("Backend Unhealthy", "disconnected");
+      updateConnectionStatus("Backend không ổn định", "disconnected");
     } else if (result && result.status === "timeout") {
-      updateConnectionStatus("Timeout", "disconnected");
+      updateConnectionStatus("Hết thời gian chờ", "disconnected");
     } else if (result && result.status === "no_connection") {
-      updateConnectionStatus("No Connection", "disconnected");
+      updateConnectionStatus("Không có kết nối", "disconnected");
     } else {
-      updateConnectionStatus("Connection Failed", "disconnected");
+      updateConnectionStatus("Kết nối thất bại", "disconnected");
     }
   } catch (error) {
-    updateConnectionStatus("Connection Failed", "disconnected");
+    updateConnectionStatus("Kết nối thất bại", "disconnected");
   } finally {
     retryButton.disabled = false;
   }

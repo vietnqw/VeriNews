@@ -1,15 +1,4 @@
 /**
- * Normalizes a relevance score to 0-1 range
- * VeriNews returns summed chunk scores (e.g., 2.45)
- * We normalize to approximate similarity
- */
-function normalizeScore(score) {
-  // Simple normalization: assume scores typically range 0-5
-  // Cap at 1.0 for very high scores
-  return Math.min(score / 5.0, 1.0);
-}
-
-/**
  * Adapts VeriNews API response to MVP extension format
  * Handles missing fields and transforms data structure
  */
@@ -18,10 +7,10 @@ function adaptVeriNewsResponse(veriNewsData) {
   const matched_articles = (veriNewsData.articles || []).map(article => ({
     // Use article_id as fallback URL until backend adds url field
     url: article.url || `#article-${article.article_id}`,
-    title: article.title || "Untitled Article",
-    source: article.source_name || "Unknown Source",
-    // Normalize relevance_score to 0-1 range
-    similarity: normalizeScore(article.relevance_score || 0)
+    title: article.title || "Bài viết không có tiêu đề",
+    source: article.source_name || "Nguồn không xác định",
+    // Use the backend's normalized similarity_score directly
+    similarity: article.similarity_score || 0
   }));
 
   // Extract claims if available (currently not returned by VeriNews API)
@@ -75,8 +64,8 @@ function adaptVeriNewsResponse(veriNewsData) {
 
     error: false,
     message: veriNewsData.cache_hit
-      ? "Retrieved from cache"
-      : "Verification completed",
+      ? "Đã truy xuất từ bộ nhớ đệm"
+      : "Xác minh hoàn tất",
 
     // Pass through additional VeriNews metadata
     _veriNewsMetadata: {
@@ -107,7 +96,7 @@ async function callVerifyAPI(content) {
 
     if (!response.ok) {
       // Try to get more info from the response body
-      let errorDetails = "Could not retrieve error details.";
+      let errorDetails = "Không thể truy xuất chi tiết lỗi.";
       try {
         const errorData = await response.json();
         if (errorData.detail) {
@@ -118,7 +107,7 @@ async function callVerifyAPI(content) {
       }
       return {
         error: true,
-        message: `API request failed with status ${response.status}. ${errorDetails}`,
+        message: `Yêu cầu API thất bại với mã trạng thái ${response.status}. ${errorDetails}`,
       };
     }
 
@@ -128,10 +117,10 @@ async function callVerifyAPI(content) {
 
   } catch (error) {
     console.error("Error calling VeriNews API:", error);
-    let message = "An unknown error occurred.";
+    let message = "Đã xảy ra lỗi không xác định.";
     if (error instanceof TypeError && error.message.includes("Failed to fetch")) {
       message =
-        "Could not connect to the VeriNews server. Please check your internet connection or try again later.";
+        "Không thể kết nối đến máy chủ VeriNews. Vui lòng kiểm tra kết nối internet của bạn hoặc thử lại sau.";
     }
     return {
       error: true,

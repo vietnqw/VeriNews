@@ -82,7 +82,7 @@
   padding: 30px 35px;
   border-radius: 16px;
   max-width: 700px;
-  width: 90%;
+  width: 80%;
   max-height: 85vh;
   overflow-y: auto; /* Add a scrollbar if the content is too long */
   position: relative;
@@ -103,27 +103,49 @@
 /* The close button in the corner */
 .vn-modal-close {
   position: absolute;
-  top: 15px;
-  right: 15px;
+  top: 10px;
+  right: 10px;
   border: none;
-  background: rgba(0, 0, 0, 0.1);
+  background: rgba(0, 0, 0, 0.15);
   border-radius: 50%;
-  width: 32px;
-  height: 32px;
-  font-size: 20px;
-  line-height: 32px;
-  text-align: center;
-  font-weight: bold;
-  color: #888;
+  width: 28px;
+  height: 28px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+.vn-modal-close::before,
+.vn-modal-close::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 16px;
+  height: 2px;
+  background-color: #444;
+  border-radius: 2px;
+  transition: background-color 0.2s ease;
+}
+
+.vn-modal-close::before {
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.vn-modal-close::after {
+  transform: translate(-50%, -50%) rotate(-45deg);
 }
 
 .vn-modal-close:hover {
-  background: rgba(0, 0, 0, 0.2);
-  color: #000;
+  background: rgba(0, 0, 0, 0.25);
   transform: rotate(90deg);
 }
+
+.vn-modal-close:hover::before,
+.vn-modal-close:hover::after {
+  background-color: #000;
+}
+
 
 /* --- NEW: Styles for Loading & Error States --- */
 .vn-status-message {

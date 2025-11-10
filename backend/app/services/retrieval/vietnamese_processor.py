@@ -5,6 +5,8 @@ Provides Vietnamese-specific text tokenization for BM25 keyword search.
 Uses pyvi library for word segmentation.
 """
 
+import re
+
 from pyvi import ViTokenizer
 
 from app.config.settings import settings
@@ -59,19 +61,26 @@ def prepare_for_tsvector(text: str) -> str:
 
 async def tokenize_for_search(query: str) -> str:
     """
-    Tokenize a search query in Vietnamese.
+    Tokenize and sanitize a search query in Vietnamese for tsquery.
 
-    This is used when constructing tsquery for search.
+    This function prepares a raw query string for PostgreSQL's to_tsquery
+    by performing tokenization, sanitization, and formatting.
 
     Args:
         query: Vietnamese search query
 
     Returns:
-        Tokenized query string ready for to_tsquery()
+        Tokenized and sanitized query string ready for to_tsquery()
     """
+    # 1. Tokenize Vietnamese text (e.g., "nhà máy" -> "nhà_máy")
     tokenized = await tokenize_vietnamese(query)
 
-    # Replace spaces with & for AND operator in tsquery
-    # Example: "công_ty vintech" -> "công_ty & vintech"
-    tokens = tokenized.split()
+    # 2. Sanitize: Remove characters that are invalid in tsquery.
+    #    Allowed characters: letters, numbers, underscores, whitespace.
+    sanitized = re.sub(r"[^\w\s]", "", tokenized)
+
+    # 3. Format for tsquery: Join tokens with '&' for AND logic.
+    tokens = sanitized.split()
+    if not tokens:
+        return ""  # Return empty string if no valid tokens remain
     return " & ".join(tokens)
