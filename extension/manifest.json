@@ -1,0 +1,42 @@
+{
+  "manifest_version": 3,
+  "name": "VeriNews",
+  "version": "1.0.0",
+  "description": "An application that verifies the credibility of online news content by comparing their content with trusted news sources using AI-powered semantic analysis",
+  "permissions": ["storage"],
+  "host_permissions": ["<all_urls>"],
+  "icons": {
+    "16": "src/assets/icons/icon16.png",
+    "32": "src/assets/icons/icon32.png",
+    "48": "src/assets/icons/icon48.png",
+    "128": "src/assets/icons/icon128.png"
+  },
+  "action": {
+    "default_popup": "src/popup/popup.html"
+  },
+  "background": {
+    "service_worker": "src/background/service_worker.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*.facebook.com/*"],
+      "js": [
+        "src/config/config.js",
+        "src/content/modules/constants.js",
+        "src/content/modules/utils.js",
+        "src/content/modules/api.js",
+        "src/content/modules/extractor.js",
+        "src/content/modules/ui.js",
+        "src/content/modules/observer.js",
+        "src/content/content.js"
+      ],
+      "css": ["src/styles/styles.css"]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["src/assets/images/verify_button.png"],
+      "matches": ["*://*.facebook.com/*"]
+    }
+  ]
+}
