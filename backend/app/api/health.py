@@ -5,11 +5,12 @@ Provides system health and status information.
 """
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import text
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config.database import get_db
 from app.core.logging import get_logger
+from app.models.article import Article
 
 
 router = APIRouter()
@@ -25,6 +26,7 @@ async def health_check(db: AsyncSession = Depends(get_db)):
     - API is running
     - Database connectivity
     - pgvector extension availability
+    - Last article crawled time
 
     Returns:
         dict: Health status information
@@ -34,6 +36,7 @@ async def health_check(db: AsyncSession = Depends(get_db)):
         "api": "running",
         "database": "disconnected",
         "pgvector": "unavailable",
+        "last_crawled_at": None,
     }
 
     try:
@@ -49,6 +52,14 @@ async def health_check(db: AsyncSession = Depends(get_db)):
         vector_version = result.scalar()
         if vector_version:
             health_status["pgvector"] = f"available (v{vector_version})"
+
+        # Get last crawled article time
+        result = await db.execute(
+            select(Article.created_at).order_by(Article.created_at.desc()).limit(1)
+        )
+        last_article = result.scalar()
+        if last_article:
+            health_status["last_crawled_at"] = last_article.isoformat()
 
         logger.debug("Health check passed")
         return health_status
