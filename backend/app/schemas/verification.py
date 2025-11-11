@@ -60,6 +60,20 @@ class VerificationResponse(BaseModel):
     query_count: int
     verification: DummyVerificationResult
     cache_hit: bool
+    factual_confidence: float | None = Field(
+        default=None,
+        description="LLM-assessed confidence that post contains verifiable facts (0.0-1.0)",
+    )
+    early_exit: bool = Field(
+        default=False,
+        description="True if pipeline exited early (e.g., low confidence)",
+    )
+    exit_reason: str | None = Field(
+        default=None, description="Reason for early exit (e.g., 'LOW_CONFIDENCE')"
+    )
+    message: str | None = Field(
+        default=None, description="Human-readable message explaining result"
+    )
 
     class Config:
         json_schema_extra = {
@@ -93,5 +107,9 @@ class VerificationResponse(BaseModel):
                     "reasoning": "Verification logic not implemented yet",
                 },
                 "cache_hit": False,
+                "factual_confidence": 0.9,
+                "early_exit": False,
+                "exit_reason": None,
+                "message": None,
             }
         }
