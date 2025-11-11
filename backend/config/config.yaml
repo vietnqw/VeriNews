@@ -55,6 +55,9 @@ retrieval:
     model: "gpt-4o-mini"  # Model for query extraction
     temperature: 0.1  # Low temperature for consistent results
     max_claims: 5  # Maximum number of claims to extract
+    min_factual_confidence: 0.3  # Minimum confidence to proceed with retrieval (0.0-1.0)
+    enable_similarity_filter: false  # Enable post-processing similarity filtering for claims
+    similarity_threshold: 0.75  # Filter claims above this similarity to clean_query
 
   # Reciprocal Rank Fusion
   fusion:
@@ -66,7 +69,7 @@ retrieval:
     enabled: true  # Enable reranking step
     model: "gpt-4o-mini"  # Model for reranking
     top_n: 10  # Number of chunks to return after reranking
-    batch_size: 5  # Chunks to score per API call (balance latency vs cost)
+    batch_size: 10  # Chunks to score per API call (increased for parallel execution)
     score_range: [0, 100]  # Expected score range from LLM
 
   # Article aggregation
