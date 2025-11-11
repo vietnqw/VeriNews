@@ -108,6 +108,9 @@ class QueryExtractionSettings(BaseSettings):
     model: str = "gpt-4o-mini"
     temperature: float = 0.1
     max_claims: int = 5
+    min_factual_confidence: float = 0.3
+    enable_similarity_filter: bool = False
+    similarity_threshold: float = 0.75
 
 
 class FusionSettings(BaseSettings):
