@@ -60,9 +60,11 @@ class VerificationResponse(BaseModel):
     query_count: int
     verification: DummyVerificationResult
     cache_hit: bool
-    factual_confidence: float | None = Field(
+    factual_confidence: int | None = Field(
         default=None,
-        description="LLM-assessed confidence that post contains verifiable facts (0.0-1.0)",
+        ge=1,
+        le=3,
+        description="LLM-assessed confidence that post contains verifiable facts (1-3 scale: 1=Opinion, 2=Vague, 3=Verifiable)",
     )
     early_exit: bool = Field(
         default=False,
@@ -107,7 +109,7 @@ class VerificationResponse(BaseModel):
                     "reasoning": "Verification logic not implemented yet",
                 },
                 "cache_hit": False,
-                "factual_confidence": 0.9,
+                "factual_confidence": 3,
                 "early_exit": False,
                 "exit_reason": None,
                 "message": None,

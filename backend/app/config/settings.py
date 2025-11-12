@@ -105,10 +105,9 @@ class QueryExtractionSettings(BaseSettings):
     """Query extraction configuration"""
 
     enabled: bool = True
-    model: str = "gpt-4o-mini"
     temperature: float = 0.1
     max_claims: int = 5
-    min_factual_confidence: float = 0.3
+    min_factual_confidence: float = 3.0
     enable_similarity_filter: bool = False
     similarity_threshold: float = 0.75
 
@@ -124,7 +123,6 @@ class RerankingSettings(BaseSettings):
     """Reranking configuration"""
 
     enabled: bool = True
-    model: str = "gpt-4o-mini"
     top_n: int = 10
     batch_size: int = 5
     score_range: list[int] = [0, 100]

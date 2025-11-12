@@ -28,7 +28,7 @@ class RerankerService:
 
     def __init__(self):
         self.llm = AIServiceFactory.get_llm_provider()
-        self.model = settings.retrieval.reranking.model
+        self.model = settings.ai.llm_model
         self.top_n = settings.retrieval.reranking.top_n
         self.batch_size = settings.retrieval.reranking.batch_size
         self.score_range = settings.retrieval.reranking.score_range
@@ -167,6 +167,7 @@ class RerankerService:
             Prompt string
         """
         min_score, max_score = self.score_range
+        n_chunks = len(chunks)
 
         # Build chunk list for prompt
         chunk_list = []
@@ -183,18 +184,38 @@ Your task is to score how relevant each chunk is to the given query.
 
 Query: "{query}"
 
+Total chunks: {n_chunks}
+
 Chunks to score:
 {chunks_text}
 
 Instructions:
-- Score each chunk from {min_score} to {max_score} based on relevance to the query
-- Higher scores mean more relevant
-- Consider semantic similarity, topic match, and factual alignment
-- Be precise and consistent
+- Score EACH AND EVERY chunk from {min_score} to {max_score} (inclusive) based on relevance to the query.
+- The output MUST contain EXACTLY {n_chunks} scores, one for each chunk in order (Chunk 0 .. Chunk {n_chunks - 1}). Do not skip any chunk.
+- If a chunk is not relevant or cannot be judged, still include a score using the minimum value {min_score}.
+- Higher scores mean more relevant.
+- Consider semantic similarity, topic match, and factual alignment.
+- Be precise and consistent.
+- Output STRICT JSON ONLY with no comments or trailing text.
+- JSON must match these constraints (conceptual schema):
+  {{
+    "type": "object",
+    "properties": {{
+      "scores": {{
+        "type": "array",
+        "items": {{"type": "number"}},
+        "minItems": {n_chunks},
+        "maxItems": {n_chunks}
+      }}
+    }},
+    "required": ["scores"],
+    "additionalProperties": false
+  }}
+- Before returning, VERIFY that length(scores) == {n_chunks}. If not, add missing items with {min_score} at the end to reach EXACTLY {n_chunks} items.
 
 Return your scores as a JSON object with a "scores" array (one score per chunk, in order):
 {{
-  "scores": [score_for_chunk_0, score_for_chunk_1, ...]
+  "scores": [score_for_chunk_0, score_for_chunk_1, ..., score_for_chunk_{n_chunks - 1}]
 }}
 """
         return prompt

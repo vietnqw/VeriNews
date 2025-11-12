@@ -73,13 +73,13 @@ class RetrievalOrchestrator:
             clean_query = extracted["clean_query"]
             claims = extracted["claims"]
             query_count = extracted["query_count"]
-            factual_confidence = extracted.get("factual_confidence", 1.0)
+            factual_confidence = extracted.get("factual_confidence", 10.0)
         else:
             # Fallback: Use original post as single query
             clean_query = post_text.strip()
             claims = []
             query_count = 1
-            factual_confidence = 1.0
+            factual_confidence = 10.0
 
         timings["query_extraction"] = (time.time() - t1) * 1000
         logger.info(
