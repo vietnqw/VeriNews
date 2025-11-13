@@ -271,9 +271,7 @@ function showContentPopup(content, apiResponse) {
       refreshButton.innerHTML = "⏳ Đang xác minh...";
 
       try {
-        // Import callVerifyAPI from api.js
-        const { callVerifyAPI } = await import(chrome.runtime.getURL("src/content/modules/api.js"));
-
+        // callVerifyAPI is already available globally (loaded via manifest)
         // Call API with cache_bypass = true
         const newApiResponse = await callVerifyAPI(content, true);
 
