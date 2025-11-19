@@ -20,75 +20,92 @@ The database stores all news articles, their text chunks, embeddings, and metada
 ## Data Models
 
 ### NewsSource
-Represents trusted news organizations
+Represents trusted news organizations.
 
 **Fields**:
-- id, name, url
-- credibility_rating (high/medium/low)
-- country, language
-- is_active (can disable sources)
-- timestamps
+- `id` (UUID, PK)
+- `name` (String, unique) - e.g., "VnExpress", "Tuổi Trẻ"
+- `base_url` (String, unique) - e.g., "https://vnexpress.net/"
+- `created_at`, `updated_at` (Timestamps)
 
-**Example**: BBC News, CNN, VnExpress
+**Relationships**:
+- Has many `RssFeed`s
 
 ### RssFeed
-RSS feed configurations for crawling
+RSS feed configurations for crawling specific topics/sections.
 
 **Fields**:
-- id, news_source_id
-- url (RSS feed URL)
-- topic (politics, tech, etc.)
-- fetch_frequency_minutes
-- is_active
-- last_fetched_at, error_count
-- timestamps
+- `id` (UUID, PK)
+- `source_id` (UUID, FK -> NewsSource)
+- `feed_url` (String, unique)
+- `topic` (String, optional) - e.g., "Politics", "Technology"
+- `is_active` (Boolean, default=True)
+- `last_fetched_at` (DateTime, optional)
+- `created_at`, `updated_at` (Timestamps)
 
 **Configured in**: `config/sources.yaml`
 
 ### Article
-News articles collected from feeds
+News articles collected from feeds.
 
 **Fields**:
-- id, news_source_id, rss_feed_id
-- title, url, author
-- published_at
-- content (full article text)
-- language, word_count
-- indexed_at (when chunks created)
-- timestamps
+- `id` (UUID, PK)
+- `feed_id` (UUID, FK -> RssFeed)
+- `title` (String)
+- `url` (String, unique)
+- `content` (Text, optional) - Full article text
+- `published_at` (DateTime, optional)
+- `created_at`, `updated_at` (Timestamps)
+
+**Relationships**:
+- Belongs to `RssFeed`
+- Has many `ArticleChunk`s
 
 ### ArticleChunk
-Text chunks with embeddings for search
+Text chunks with embeddings for search.
 
 **Fields**:
-- id, article_id
-- chunk_index (order within article)
-- text (500-2000 characters)
-- word_count
-- **embedding** (VECTOR(1536)) - for semantic search
-- **search_vector** (tsvector) - for keyword search
-- timestamp
+- `id` (UUID, PK)
+- `article_id` (UUID, FK -> Article)
+- `chunk_index` (Integer) - Order within article
+- `chunk_text` (Text) - The actual content chunk
+- **`embedding`** (VECTOR(1536)) - OpenAI embedding for semantic search
+- **`search_vector`** (TSVECTOR) - Vietnamese-tokenized vector for keyword search
+- **Denormalized Fields** (for faster retrieval):
+  - `article_title`, `source_name`, `published_at`
+- `created_at`, `updated_at` (Timestamps)
 
 **Key point**: This is what gets searched. Each article is split into multiple chunks.
 
 ### VerificationRequest
-Tracks verification requests (currently minimal use)
+Tracks user requests to verify Facebook posts.
 
 **Fields**:
-- id, post_text, post_metadata
-- status, verdict, credibility_score
-- explanation, evidence
-- processing_time_ms, cached
-- timestamps
+- `id` (UUID, PK)
+- `original_text` (Text) - The raw Facebook post
+- `text_hash` (String, unique index) - SHA256 of text for caching
+- `clean_query` (Text) - Cleaned by AI
+- `claims` (JSON) - Extracted claims list
+- `status` (Enum) - PENDING, PROCESSING, COMPLETED, FAILED
+- `created_at`, `updated_at` (Timestamps)
+
+**Relationships**:
+- Has one `RetrievalResult`
 
 ### RetrievalResult
-Links verification requests to retrieved articles
+Stores the full output of the retrieval pipeline for a request.
 
 **Fields**:
-- id, verification_request_id, article_id
-- relevance_score, rank
-- matching_chunks
-- timestamp
+- `id` (UUID, PK)
+- `request_id` (UUID, FK -> VerificationRequest, unique)
+- **`retrieved_chunks_json`** (JSON) - Intermediate RRF results
+- **`reranked_chunks_json`** (JSON) - Results after AI reranking
+- **`final_articles_json`** (JSON) - Final aggregated article results with confidence scores
+- **`stage_timings_json`** (JSON) - Performance metrics breakdown
+- `processing_time_ms` (Integer)
+- `created_at` (Timestamp)
+
+**Design Choice**: Uses JSON fields to store complex, nested pipeline results instead of normalized tables, as these are read-heavy, write-once records used for history/auditing.
 
 ## How Search Works
 
@@ -97,43 +114,40 @@ Links verification requests to retrieved articles
 **Index**: IVFFlat on `ArticleChunk.embedding`
 ```sql
 CREATE INDEX article_chunk_embedding_idx
-ON article_chunk
+ON article_chunks
 USING ivfflat (embedding vector_cosine_ops)
 WITH (lists = 100);
 ```
 
 **Query**: Find similar chunks by cosine distance
 ```sql
-SELECT id, article_id, text,
-       1 - (embedding <=> :query_vector) AS similarity
-FROM article_chunk
+SELECT id, chunk_text, article_id,
+       1 - (embedding <=> :query_vector) AS score
+FROM article_chunks
 ORDER BY embedding <=> :query_vector
-LIMIT 50;
+LIMIT 100;
 ```
-
-The `<=>` operator is cosine distance (lower = more similar)
 
 ### Full-Text Search (Keyword)
 
 **Index**: GIN on `ArticleChunk.search_vector`
 ```sql
 CREATE INDEX article_chunk_search_vector_idx
-ON article_chunk
+ON article_chunks
 USING GIN (search_vector);
 ```
 
-**Query**: BM25-style ranking
+**Query**: BM25-style ranking with Vietnamese tokenization
 ```sql
-SELECT id, article_id, text,
-       ts_rank_cd(search_vector, query) AS relevance
-FROM article_chunk,
-     to_tsquery('vietnamese', :query) query
+SELECT id, chunk_text, article_id,
+       ts_rank_cd(search_vector, query) AS score
+FROM article_chunks,
+     to_tsquery('simple', :tokenized_query) query
 WHERE search_vector @@ query
-ORDER BY ts_rank_cd(search_vector, query) DESC
-LIMIT 50;
+ORDER BY score DESC
+LIMIT 100;
 ```
-
-`ts_rank_cd` provides BM25-like ranking (term frequency, document length normalization)
+*Note: Uses 'simple' config because we handle Vietnamese tokenization in Python via `pyvi` before indexing.*
 
 ## Database Migrations
 
@@ -141,12 +155,6 @@ Using Alembic for schema versioning:
 - Migrations in `backend/alembic/versions/`
 - Run migrations: `uv run alembic upgrade head`
 - Create migration: `uv run alembic revision --autogenerate -m "description"`
-
-## Connection Management
-
-- Async SQLAlchemy (AsyncEngine, AsyncSession)
-- Connection pooling configured
-- Handles concurrent requests efficiently
 
 ## Access
 
@@ -158,21 +166,7 @@ Using Alembic for schema versioning:
 
 ## Performance
 
-**Current capacity**:
-- Handles ~100K article chunks efficiently
-- Vector search: ~30-50ms
-- Keyword search: ~20-30ms
-- Scales to millions with proper indexing
-
 **Optimization**:
-- IVFFlat index for fast approximate vector search
-- GIN index for fast text search
-- Connection pooling reduces overhead
-- Async operations for concurrency
-
-## What's NOT Implemented
-
-- Read replicas (for scaling reads)
-- Partitioning (for very large datasets)
-- Advanced analytics tables
-- User authentication tables
+- **Denormalization**: `ArticleChunk` stores `article_title` and `source_name` to avoid 3-way joins during search.
+- **Indexing**: IVFFlat for vectors, GIN for text, B-tree for UUIDs/Foreign Keys.
+- **Connection Pooling**: Async SQLAlchemy with configured pool size.
