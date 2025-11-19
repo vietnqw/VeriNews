@@ -22,15 +22,17 @@ The cache layer stores verification results in Redis so repeated queries return 
 
 **What**: Complete article retrieval results
 
-**Key format**: `SHA256(post_text)`
+**Key format**: `retrieval:{SHA256(post_text)}`
+*(Prefix "retrieval:" is configurable)*
 
 **Value**: JSON containing:
-- List of matched articles
+- List of matched articles (with chunks)
 - Relevance scores
+- **Confidence metrics** (overall confidence, tier, component scores)
 - Stage timing information
-- Query count
+- Query count & factual confidence
 
-**TTL**: 1 hour (3600 seconds)
+**TTL**: 24 hours (configurable)
 
 **Why cache**:
 - Retrieval takes ~1 second
@@ -45,10 +47,10 @@ The cache layer stores verification results in Redis so repeated queries return 
 2. Check Redis for cached result
 3. If found: Return immediately with `cache_hit: true`
 4. If not found: Run full retrieval pipeline
-5. Store result in Redis with 1-hour TTL
+5. Store result in Redis with 24-hour TTL
 6. Return result with `cache_hit: false`
 
-**Implementation**: `RetrievalCache` service class
+**Implementation**: `RetrievalCache` service class (`backend/app/services/cache/retrieval_cache.py`)
 
 ## Cache Strategy
 
@@ -63,8 +65,8 @@ The cache layer stores verification results in Redis so repeated queries return 
 - Resilient (if Redis down, still works, just slower)
 
 **Expiration**: Time-based (TTL)
-- Results expire after 1 hour
-- News changes frequently, so don't cache too long
+- Results expire after 24 hours (default)
+- News changes frequently, but 24h allows catching viral repeats
 - Redis automatically removes expired keys
 
 ## Implementation Details
@@ -83,26 +85,26 @@ The cache layer stores verification results in Redis so repeated queries return 
 - `REDIS_URL`: Connection string (default: redis://localhost:6379/0)
 
 **Cache settings** (in `config/config.yaml`):
-- Cache enabled/disabled toggle
-- TTL duration
-- Clear cache command available
+- `retrieval.cache.enabled`: Toggle on/off
+- `retrieval.cache.ttl_hours`: Duration (default: 24)
+- `retrieval.cache.redis_key_prefix`: Key prefix (default: "retrieval:")
 
 ## Performance Impact
 
 **Without cache**:
 - Every query: ~1 second
-- Cost: $0.025 per verification
+- Cost: ~$0.02 per verification
 
-**With cache (80% hit rate)**:
+**With cache (Viral post scenario)**:
 - Cached queries: ~10ms
 - Uncached queries: ~1 second
-- Average cost: ~$0.005 per verification
+- Average cost: Approaches $0 for viral content
 
 ## What's NOT Implemented
 
-- Embedding caching (queries → embeddings)
-- Query extraction caching (posts → clean queries)
-- Article metadata caching
+- Embedding caching (queries → embeddings) - *Potential optimization*
+- Query extraction caching (posts → clean queries) - *Potential optimization*
+- Article metadata caching (separate from search results)
 - Multi-level caching (application + Redis)
 - Redis Sentinel (high availability)
 - Redis Cluster (horizontal scaling)
