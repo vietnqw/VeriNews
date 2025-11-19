@@ -1,0 +1,84 @@
+/* Related Articles */
+.vn-articles-section {
+  /* No longer needs specific padding if inside collapsible content, but we'll keep it reset if needed */
+  padding: 0;
+}
+
+.vn-articles-title {
+  /* Title is now handled by the collapsible toggle, so this might be redundant or used if we keep it inside */
+  display: none;
+}
+
+.vn-articles-list {
+  list-style-type: none;
+  padding-left: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.vn-articles-list li {
+  padding: 16px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  background: #f9fafb;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.vn-articles-list li:hover {
+  background: #f3f4f6;
+}
+
+.vn-article-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.vn-article-link {
+  text-decoration: none;
+  color: #2563eb;
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 1.5;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.vn-article-link:hover {
+  color: #1d4ed8;
+}
+
+.vn-article-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.vn-article-source {
+  color: #6b7280;
+}
+
+.vn-article-accuracy {
+  font-weight: 600;
+}
+
+.vn-article-accuracy.green { color: #16a34a; }
+.vn-article-accuracy.yellow { color: #d97706; }
+.vn-article-accuracy.red { color: #dc2626; }
+
+.vn-article-arrow {
+  color: #9ca3af;
+  font-size: 20px;
+  transition: transform 0.2s ease;
+}
+
+.vn-articles-list li:hover .vn-article-arrow {
+  transform: translateX(4px);
+  color: #6b7280;
+}

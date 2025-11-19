@@ -1,0 +1,80 @@
+/* Extract Button */
+.vn-extract-button {
+  position: absolute;
+  top: 15px;
+  right: 80px;
+  z-index: 1000;
+  pointer-events: auto;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.vn-extract-button.vn-menu-button {
+  position: relative;
+  top: auto;
+  right: 60px;
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+}
+
+.vn-extract-button:hover {
+  opacity: 1;
+}
+
+.vn-verify-image {
+  display: block;
+}
+
+.vn-verify-image.post,
+.vn-verify-image.complementary {
+  width: 32px;
+  height: 32px;
+}
+
+.vn-verify-image.comment {
+  width: 24px;
+  height: 24px;
+}
+
+/* Refresh Button */
+.vn-refresh-button {
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 9999px;
+  padding: 10px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3);
+}
+
+.vn-refresh-button:hover:not(:disabled) {
+  background: #1d4ed8;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.4);
+}
+
+.vn-refresh-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.vn-refresh-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.vn-refresh-icon {
+  font-size: 12px;
+}

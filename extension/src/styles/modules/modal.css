@@ -1,0 +1,102 @@
+/* Modal Popup Styles */
+.vn-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  z-index: 2000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  animation: fadeIn 0.3s ease-out;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.vn-modal-content {
+  background: #ffffff;
+  color: #333;
+  padding: 0;
+  border-radius: 16px;
+  max-width: 600px;
+  width: 95%;
+  max-height: 85vh;
+  overflow-y: auto;
+  position: relative;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  animation: slideInUp 0.4s ease-out;
+  font-family: inherit;
+}
+
+/* Custom scrollbar for modal */
+.vn-modal-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.vn-modal-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.vn-modal-content::-webkit-scrollbar-thumb {
+  background: #e0e0e0;
+  border-radius: 3px;
+}
+
+.vn-modal-content::-webkit-scrollbar-thumb:hover {
+  background: #d0d0d0;
+}
+
+.vn-modal-content p {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  color: #333;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.vn-modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vn-modal-close::before,
+.vn-modal-close::after {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 2px;
+  background-color: #9ca3af;
+  border-radius: 2px;
+  transition: background-color 0.2s ease;
+}
+
+.vn-modal-close::before {
+  transform: rotate(45deg);
+}
+
+.vn-modal-close::after {
+  transform: rotate(-45deg);
+}
+
+.vn-modal-close:hover::before,
+.vn-modal-close:hover::after {
+  background-color: #6b7280;
+}
+
+.vn-modal-body {
+  padding: 24px;
+}

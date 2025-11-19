@@ -1,0 +1,130 @@
+/* Loading & Error States */
+.vn-loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 48px 32px 60px;
+  text-align: center;
+}
+
+.vn-loading-spinner-wrapper {
+  position: relative;
+  width: 64px;
+  height: 64px;
+}
+
+.vn-loading-spinner-track {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 4px solid rgba(59, 130, 246, 0.1);
+}
+
+.vn-loading-spinner-indicator {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  /* Modern Gradient Tail Effect */
+  background: conic-gradient(from 0deg, transparent 0%, #3b82f6 100%);
+  /* Create a ring by masking the center */
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #fff calc(100% - 4px + 0.5px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #fff calc(100% - 4px + 0.5px));
+
+  animation: vn-spin-modern 1s linear infinite;
+}
+
+/* Optional: Add a "head" dot to the spinner for a polished look */
+.vn-loading-spinner-indicator::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  background: #3b82f6;
+  border-radius: 50%;
+  box-shadow: 0 0 4px #3b82f6;
+}
+
+.vn-loading-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0;
+}
+
+.vn-loading-description {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #64748b;
+  margin: 0;
+  max-width: 280px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .vn-loading-spinner-track {
+    border-color: rgba(96, 165, 250, 0.1);
+  }
+
+  .vn-loading-spinner-indicator {
+    background: conic-gradient(from 0deg, transparent 0%, #60a5fa 100%);
+  }
+
+  .vn-loading-spinner-indicator::after {
+    background: #60a5fa;
+    box-shadow: 0 0 4px #60a5fa;
+  }
+
+  .vn-loading-title {
+    color: #f1f5f9;
+  }
+
+  .vn-loading-description {
+    color: #94a3b8;
+  }
+}
+
+@keyframes vn-spin-modern {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.vn-error-container {
+  text-align: center;
+  padding: 32px 24px;
+}
+
+.vn-error-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #ef4444;
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+
+.vn-error-message {
+  font-size: 14px;
+  color: #6b7280;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  margin: 0;
+}
+
+.vn-empty-message {
+  text-align: center;
+  font-size: 13px;
+  color: #9ca3af;
+  padding: 16px;
+}
+
+.vn-info-note {
+  padding: 10px 20px;
+  background: #eff6ff;
+  border-left: 3px solid #3b82f6;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #1e40af;
+}

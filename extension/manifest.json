@@ -30,7 +30,16 @@
         "src/content/modules/observer.js",
         "src/content/content.js"
       ],
-      "css": ["src/styles/styles.css"]
+      "css": [
+        "src/styles/modules/base.css",
+        "src/styles/modules/buttons.css",
+        "src/styles/modules/modal.css",
+        "src/styles/modules/states.css",
+        "src/styles/modules/verification.css",
+        "src/styles/modules/articles.css",
+        "src/styles/modules/analysis.css",
+        "src/styles/modules/footer.css"
+      ]
     }
   ],
   "web_accessible_resources": [
