@@ -30,7 +30,6 @@ class QueryExtractionService:
     def __init__(self):
         self.llm = AIServiceFactory.get_llm_provider()
         self.model = settings.ai.llm_model
-        self.temperature = settings.retrieval.query_extraction.temperature
         self.max_claims = settings.retrieval.query_extraction.max_claims
 
     async def extract_queries(self, post_text: str) -> Dict[str, any]:
@@ -74,16 +73,12 @@ class QueryExtractionService:
             response = await self.llm.generate_completion(
                 messages=messages,
                 model=self.model,
-                temperature=self.temperature,
+                temperature=0,  # Deterministic output
             )
 
             # Parse RATIONALE and JSON from two-step output
             rationale_text = ""
             json_string = ""
-
-            print("--------------------------------")
-            print(response.content)
-            print("--------------------------------")
 
             # Split by **JSON:** delimiter
             if "**JSON:**" in response.content:
@@ -152,6 +147,9 @@ class QueryExtractionService:
                         # Only add type if we have entities
                         if clean_entities:
                             entities[entity_type] = clean_entities
+
+            # Log all extracted entities at info level (added for instruction)
+            logger.debug(f"All extracted entities: {entities}")
 
             # Validate confidence is in range [1, 2, 3]
             try:
@@ -252,42 +250,34 @@ Return a JSON object with EXACTLY these keys:
    - "locations": string[] (if any locations found in the post)
    - "products_topics": string[] (if any products/brands/medical terms found in the post)
 
-   **CRITICAL ENTITY EXTRACTION RULES:**
-   - **Focus on DISCRIMINATIVE entities**: Only extract entities that help identify the MAIN TOPIC of the post
-   - **Avoid GENERIC terms**: DO NOT extract common words like "nội dung", "thông tin", "vấn đề", "sự việc", "chuyện", "điều", "việc", "cái"
-   - **Persons must be IDENTIFIABLE**: Only extract persons if they meet ONE of these criteria:
-     * Full name, first name, or last name (e.g., "Nguyễn Văn A", "Phạm Cẩm Phương", "ông Dương")
-     * Well-known position/title (e.g., "Thủ tướng", "Bộ trưởng Bộ Y tế", "Giám đốc Sở")
-     * Name WITH title (e.g., "PGS.TS Phạm Cẩm Phương", "Bà Nguyễn Thị B")
-     DO NOT extract:
-     * General pronouns or vague references: "ông cháu", "bạn ấy", "anh ta", "chị ấy", "người này", "ai đó"
-     * Generic roles without names: "bệnh nhân", "khách hàng", "người dùng", "sinh viên"
-   - **Distinguish MAIN TOPICS from SUPPORTING DETAILS**:
-     * For rental/sale posts: Extract property type + location (e.g., "phòng cho thuê", "Cầu Giấy"), NOT individual amenities (giường, tủ lạnh, máy giặt, etc.)
-     * For news events: Extract key persons/organizations/locations, NOT evidence details (bộ xương, vết máu, áo blouse, etc.)
-     * For announcements: Extract main organizations + key persons + core topics, NOT every action verb or noun mentioned
-   - **Limit products_topics to 3-5 most relevant items**: Avoid listing every noun. Focus on what someone would SEARCH for.
+  **CRITICAL ENTITY EXTRACTION RULES:**
+   - **Focus on DISCRIMINATIVE entities**: Only extract entities that help identify the MAIN TOPIC.
+   - **Normalize to CORE/CANONICAL Name**:
+     * **Events:** Remove years/dates from recurring events.
+       (Text: "Festival Sông Hồng 2025" -> Extract: "Festival Sông Hồng")
+       (Text: "Miss Grand International 2024" -> Extract: "Miss Grand International")
+     * **Organizations:** Remove legal suffixes like "JSC", "Co., Ltd" or modifiers like "chi nhánh Hà Nội" if the parent brand is the search target.
+       (Text: "Công ty VinFast chi nhánh Hải Phòng" -> Extract: "VinFast")
+     * **Products:** Keep version numbers if they define the product (e.g., "iPhone 15"), but remove generic adjectives (e.g., "điện thoại iPhone 15 mới" -> "iPhone 15").
+   - **Avoid GENERIC terms**: (Keep your existing list: "nội dung", "thông tin", etc.)
+   - **Persons must be IDENTIFIABLE**: (Keep your existing rules)
 
-   **Examples of GOOD vs BAD entity extraction:**
+**Entity Normalization Examples (Canonical Forms):**
 
-   **Generic terms:**
-   ❌ BAD: "nội dung" (too generic, no discriminative value)
-   ✅ GOOD: "Tuyển dụng", "Hướng nghiệp" (specific topics)
+   **Recurring Events (Strip the year):**
+   ❌ BAD: "Festival Sông Hồng 2025" (Too specific, limits search hits)
+   ❌ BAD: "Olympic Paris 2024"
+   ✅ GOOD: "Festival Sông Hồng" (Core entity, broader match)
+   ✅ GOOD: "Olympic" or "Olympic Paris"
 
-   **Supporting details vs main topics:**
-   ❌ BAD: "giường, tủ lạnh, máy giặt, điều hòa" for rental post (just features, not searchable)
-   ✅ GOOD: "phòng cho thuê" (what people search for)
+   **Organizations (Strip the branch/location if brand is main topic):**
+   ❌ BAD: "Ngân hàng Vietcombank chi nhánh Cầu Giấy"
+   ✅ GOOD: "Vietcombank" (Unless the specific branch is the subject of a scandal/event)
 
-   ❌ BAD: "bộ xương, áo blouse màu hồng" for missing persons case (evidence details)
-   ✅ GOOD: "Ethan Morrison", "Alice Patterson", "sa mạc Chihuahua" (main entities)
-
-   **Person entities (must be identifiable):**
-   ❌ BAD: "ông cháu", "bạn ấy", "người này" (vague references, not identifiable)
-   ❌ BAD: "bệnh nhân", "khách hàng" (generic roles, not identifiable)
-   ✅ GOOD: "Nguyễn Đức Dương" (full name)
-   ✅ GOOD: "PGS.TS Phạm Cẩm Phương" (name with title)
-   ✅ GOOD: "Thủ tướng", "Bộ trưởng Bộ Y tế" (well-known positions)
-   ✅ GOOD: "ông Dương" (last name with pronoun gives clue to identity)
+   **Products:**
+   ❌ BAD: "chiếc xe VinFast VF3" (Includes generic noun)
+   ✅ GOOD: "VinFast VF3" (Specific Model)
+   ✅ GOOD: "VinFast" (Brand)
 
    Entities MUST be exact surface forms present in the post text.
    Extract ALL entities from the ENTIRE post, not per-claim. Deduplicate if same entity appears multiple times.
