@@ -110,6 +110,7 @@ class RetrievalOrchestrator:
                 "total_time_ms": int(total_time),
                 "stage_timings": timings,
                 "query_count": query_count,
+                "claims": claims,
                 "factual_confidence": factual_confidence,
                 "early_exit": True,
                 "exit_reason": "LOW_CONFIDENCE",
@@ -226,6 +227,7 @@ class RetrievalOrchestrator:
                 "total_time_ms": int(total_time),
                 "stage_timings": timings,
                 "query_count": query_count,
+                "claims": claims,
                 "factual_confidence": factual_confidence,
                 "retrieval_confidence": confidence_metrics.overall_confidence,
                 "confidence_metrics": confidence_metrics.to_dict(),
@@ -255,6 +257,7 @@ class RetrievalOrchestrator:
             "total_time_ms": int(total_time),
             "stage_timings": timings,
             "query_count": query_count,
+            "claims": claims,
             "factual_confidence": factual_confidence,
             "retrieval_confidence": (
                 confidence_metrics.overall_confidence if confidence_metrics else None

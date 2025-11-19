@@ -201,6 +201,85 @@ class CacheSettings(BaseSettings):
         return self.ttl_hours * 3600
 
 
+# Verification Pipeline Settings
+class ClaimEvidenceMappingSettings(BaseSettings):
+    """Claim-evidence mapping configuration"""
+
+    top_k_chunks_per_claim: int = 5
+    min_similarity_threshold: float = 0.7
+
+
+class StanceClassificationSettings(BaseSettings):
+    """Stance classification (NLI) configuration"""
+
+    num_parallel_workers: int = 4
+    worker_timeout_seconds: float = 10.0
+    min_confidence: float = 0.6
+
+
+class VerificationAggregationSettings(BaseSettings):
+    """Verification verdict aggregation configuration"""
+
+    min_evidence_per_claim: int = 1
+    conflict_mode: str = "conservative"  # conservative, majority, recency
+
+
+class VerdictSettings(BaseSettings):
+    """Overall verdict generation configuration"""
+
+    mode: str = "worst_case"  # worst_case, majority, weighted
+    types: list[str] = [
+        "FULLY_SUPPORTED",
+        "PARTIALLY_SUPPORTED",
+        "REFUTED",
+        "NOT_ENOUGH_INFO",
+    ]
+
+
+class VerificationConfidenceWeights(BaseSettings):
+    """Weights for verification confidence scoring"""
+
+    evidence_quality: float = 0.30
+    source_agreement: float = 0.25
+    stance_confidence: float = 0.25
+    claim_coverage: float = 0.15
+    temporal_relevance: float = 0.05
+
+
+class VerificationConfidenceThresholds(BaseSettings):
+    """Thresholds for verification confidence tiers"""
+
+    high: float = 0.75
+    medium: float = 0.50
+    low: float = 0.25
+
+
+class VerificationConfidenceScoringSettings(BaseSettings):
+    """Verification confidence scoring configuration"""
+
+    weights: VerificationConfidenceWeights = VerificationConfidenceWeights()
+    thresholds: VerificationConfidenceThresholds = VerificationConfidenceThresholds()
+
+
+class ExplanationSettings(BaseSettings):
+    """Explanation generation configuration"""
+
+    language: str = "vi"
+    max_length: int = 500
+
+
+class VerificationSettings(BaseSettings):
+    """Verification pipeline configuration"""
+
+    enabled: bool = True
+    claim_evidence_mapping: ClaimEvidenceMappingSettings
+    stance_classification: StanceClassificationSettings
+    aggregation: VerificationAggregationSettings
+    verdict: VerdictSettings
+    confidence_scoring: VerificationConfidenceScoringSettings
+    explanation: ExplanationSettings
+
+
 class RetrievalSettings(BaseSettings):
     """Retrieval pipeline configuration"""
 
@@ -295,6 +374,31 @@ class Settings(BaseSettings):
                 **retrieval_config.get("confidence_scoring", {})
             ),
             cache=CacheSettings(**retrieval_config.get("cache", {})),
+        )
+
+    # Verification pipeline configuration
+    @property
+    def verification(self) -> VerificationSettings:
+        """Get verification pipeline settings"""
+        verification_config = yaml_config.get("verification", {})
+        return VerificationSettings(
+            enabled=verification_config.get("enabled", True),
+            claim_evidence_mapping=ClaimEvidenceMappingSettings(
+                **verification_config.get("claim_evidence_mapping", {})
+            ),
+            stance_classification=StanceClassificationSettings(
+                **verification_config.get("stance_classification", {})
+            ),
+            aggregation=VerificationAggregationSettings(
+                **verification_config.get("aggregation", {})
+            ),
+            verdict=VerdictSettings(**verification_config.get("verdict", {})),
+            confidence_scoring=VerificationConfidenceScoringSettings(
+                **verification_config.get("confidence_scoring", {})
+            ),
+            explanation=ExplanationSettings(
+                **verification_config.get("explanation", {})
+            ),
         )
 
     @property

@@ -4,9 +4,116 @@ Verification API Schemas
 Pydantic models for verification request/response.
 """
 
+from enum import Enum
 from typing import Dict, List
 
 from pydantic import BaseModel, Field
+
+
+class StanceType(str, Enum):
+    """Stance classification types for NLI"""
+
+    SUPPORTS = "SUPPORTS"
+    REFUTES = "REFUTES"
+    NOT_ENOUGH_INFO = "NOT_ENOUGH_INFO"
+
+
+class ClaimVerdictType(str, Enum):
+    """Verdict types for individual claims"""
+
+    SUPPORTED = "SUPPORTED"
+    REFUTED = "REFUTED"
+    NOT_ENOUGH_INFO = "NOT_ENOUGH_INFO"
+
+
+class OverallVerdictType(str, Enum):
+    """Overall verdict types for the entire post"""
+
+    FULLY_SUPPORTED = "FULLY_SUPPORTED"
+    PARTIALLY_SUPPORTED = "PARTIALLY_SUPPORTED"
+    REFUTED = "REFUTED"
+    NOT_ENOUGH_INFO = "NOT_ENOUGH_INFO"
+
+
+class StanceResultSchema(BaseModel):
+    """Result of stance classification for a claim-evidence pair"""
+
+    claim_text: str = Field(description="The claim being verified")
+    evidence_chunk_id: str = Field(description="ID of the evidence chunk")
+    evidence_text: str = Field(description="Text of the evidence chunk")
+    source_name: str = Field(description="Name of the news source")
+    published_at: str | None = Field(description="Publication date of the article")
+    stance: StanceType = Field(
+        description="Classified stance: SUPPORTS, REFUTES, or NOT_ENOUGH_INFO"
+    )
+    confidence: float = Field(
+        ge=0.0, le=1.0, description="LLM confidence in stance classification"
+    )
+    key_quote: str = Field(description="Key quote from evidence supporting the stance")
+    reasoning: str = Field(
+        description="Brief explanation for the stance classification"
+    )
+
+
+class ClaimVerdictSchema(BaseModel):
+    """Aggregated verdict for a single claim"""
+
+    claim_text: str = Field(description="The claim being verified")
+    verdict: ClaimVerdictType = Field(description="Verdict for this claim")
+    confidence: float = Field(ge=0.0, le=1.0, description="Confidence in this verdict")
+    supporting_evidence: List[StanceResultSchema] = Field(
+        default_factory=list, description="Evidence that supports the claim"
+    )
+    refuting_evidence: List[StanceResultSchema] = Field(
+        default_factory=list, description="Evidence that refutes the claim"
+    )
+
+
+class VerificationConfidenceMetricsSchema(BaseModel):
+    """Confidence metrics specific to verification"""
+
+    overall_confidence: float = Field(
+        ge=0.0, le=1.0, description="Overall verification confidence (0-1)"
+    )
+    confidence_tier: str = Field(
+        description="Confidence tier: HIGH, MEDIUM, LOW, or NONE"
+    )
+    evidence_quality: float = Field(
+        ge=0.0, le=1.0, description="Average relevance score of evidence chunks"
+    )
+    source_agreement: float = Field(
+        ge=0.0, le=1.0, description="Percentage of sources agreeing on verdict"
+    )
+    claim_coverage: float = Field(
+        ge=0.0, le=1.0, description="Percentage of claims fully supported"
+    )
+    stance_confidence: float = Field(
+        ge=0.0, le=1.0, description="Average LLM confidence in stance classifications"
+    )
+    temporal_relevance: float = Field(
+        ge=0.0, le=1.0, description="Recency score of articles"
+    )
+
+
+class VerificationResultSchema(BaseModel):
+    """Complete verification result"""
+
+    verdict: OverallVerdictType = Field(description="Overall verdict for the post")
+    confidence: float = Field(ge=0.0, le=1.0, description="Overall confidence score")
+    confidence_tier: str = Field(description="Confidence tier: HIGH, MEDIUM, LOW")
+    explanation: str = Field(description="Human-readable explanation in Vietnamese")
+    claim_verdicts: List[ClaimVerdictSchema] = Field(
+        description="Per-claim verification results"
+    )
+    total_claims: int = Field(description="Total number of claims extracted")
+    supported_claims: int = Field(description="Number of supported claims")
+    refuted_claims: int = Field(description="Number of refuted claims")
+    sources_used: List[str] = Field(
+        description="List of news sources used for verification"
+    )
+    confidence_metrics: VerificationConfidenceMetricsSchema = Field(
+        description="Detailed confidence breakdown"
+    )
 
 
 class ChunkDetailSchema(BaseModel):
@@ -73,14 +180,6 @@ class ConfidenceMetricsSchema(BaseModel):
     article_count: int = Field(description="Number of articles returned")
 
 
-class DummyVerificationResult(BaseModel):
-    """Dummy verification result (placeholder for future implementation)"""
-
-    verdict: str = "NOT_IMPLEMENTED"
-    confidence: float = 0.0
-    reasoning: str = "Verification logic not implemented yet"
-
-
 class VerificationResponse(BaseModel):
     """Response from verification endpoint"""
 
@@ -88,7 +187,9 @@ class VerificationResponse(BaseModel):
     total_time_ms: int
     stage_timings: Dict[str, float]
     query_count: int
-    verification: DummyVerificationResult
+    verification: VerificationResultSchema | None = Field(
+        default=None, description="Verification result with verdict and evidence"
+    )
     cache_hit: bool
     factual_confidence: int | None = Field(
         default=None,
@@ -148,9 +249,32 @@ class VerificationResponse(BaseModel):
                 },
                 "query_count": 3,
                 "verification": {
-                    "verdict": "NOT_IMPLEMENTED",
-                    "confidence": 0.0,
-                    "reasoning": "Verification logic not implemented yet",
+                    "verdict": "FULLY_SUPPORTED",
+                    "confidence": 0.85,
+                    "confidence_tier": "HIGH",
+                    "explanation": "Tất cả tuyên bố được xác nhận bởi nguồn tin đáng tin cậy",
+                    "claim_verdicts": [
+                        {
+                            "claim_text": "VinTech công bố dự án nhà máy mới",
+                            "verdict": "SUPPORTED",
+                            "confidence": 0.9,
+                            "supporting_evidence": [],
+                            "refuting_evidence": [],
+                        }
+                    ],
+                    "total_claims": 1,
+                    "supported_claims": 1,
+                    "refuted_claims": 0,
+                    "sources_used": ["VnExpress"],
+                    "confidence_metrics": {
+                        "overall_confidence": 0.85,
+                        "confidence_tier": "HIGH",
+                        "evidence_quality": 0.88,
+                        "source_agreement": 1.0,
+                        "claim_coverage": 1.0,
+                        "stance_confidence": 0.9,
+                        "temporal_relevance": 0.7,
+                    },
                 },
                 "cache_hit": False,
                 "factual_confidence": 3,

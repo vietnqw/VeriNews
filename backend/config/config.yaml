@@ -114,3 +114,51 @@ retrieval:
     enabled: true  # Enable result caching
     ttl_hours: 24  # Cache TTL in hours
     redis_key_prefix: "retrieval:"  # Redis key prefix
+
+# Verification Pipeline Configuration
+verification:
+  enabled: true  # Enable verification service
+
+  # Claim-evidence mapping
+  claim_evidence_mapping:
+    top_k_chunks_per_claim: 5  # Number of evidence chunks to retrieve per claim
+    min_similarity_threshold: 0.7  # Minimum semantic similarity to include evidence
+
+  # Stance classification (LLM-based NLI)
+  stance_classification:
+    num_parallel_workers: 4  # Number of parallel workers for stance classification
+    worker_timeout_seconds: 10  # Timeout per worker
+    min_confidence: 0.6  # Minimum confidence to trust stance classification
+
+  # Verdict aggregation
+  aggregation:
+    min_evidence_per_claim: 1  # Minimum evidence pieces needed for a verdict
+    conflict_mode: "conservative"  # How to handle conflicts: "conservative" (NEI), "majority", "recency"
+
+  # Overall verdict generation
+  verdict:
+    mode: "worst_case"  # "worst_case" (any refuted = refuted), "majority", "weighted"
+    types:
+      - "FULLY_SUPPORTED"
+      - "PARTIALLY_SUPPORTED"
+      - "REFUTED"
+      - "NOT_ENOUGH_INFO"
+
+  # Confidence scoring weights (must sum to 1.0)
+  confidence_scoring:
+    weights:
+      evidence_quality: 0.30  # Average relevance score of evidence chunks
+      source_agreement: 0.25  # Percentage of sources agreeing on verdict
+      stance_confidence: 0.25  # Average LLM confidence in stance classifications
+      claim_coverage: 0.15  # Percentage of claims fully supported
+      temporal_relevance: 0.05  # Recency of articles
+    thresholds:
+      high: 0.75  # >= 75% = HIGH confidence
+      medium: 0.50  # >= 50% = MEDIUM confidence
+      low: 0.25  # >= 25% = LOW confidence
+      # < 25% = NONE
+
+  # Explanation generation
+  explanation:
+    language: "vi"  # Language for explanations (vi = Vietnamese)
+    max_length: 500  # Maximum length of explanation in characters
