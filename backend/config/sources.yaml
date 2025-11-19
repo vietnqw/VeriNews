@@ -4,6 +4,12 @@
 # that VeriNews will crawl for article verification.
 
 sources:
+  - name: "Lào Cai"
+    base_url: "https://baolaocai.vn/"
+    feeds:
+      - url: "https://baolaocai.vn/rss/home.rss"
+        topic: "Trang chủ"
+
   - name: "Tuổi Trẻ"
     base_url: "https://tuoitre.vn/"
     feeds:
@@ -35,16 +41,16 @@ sources:
         topic: "Khoa Học"
       - url: "https://tuoitre.vn/rss/suc-khoe.rss"
         topic: "Sức Khỏe"
-      # - url: "https://tuoitre.vn/rss/gia-that.rss"
-      #   topic: "Giá Thật"
-      # - url: "https://tuoitre.vn/rss/thu-gian.rss"
-      #   topic: "Thư Giãn"
-      # - url: "https://tuoitre.vn/rss/ban-doc.rss"
-      #   topic: "Bạn Đọc"
-      # - url: "https://tuoitre.vn/rss/du-lich.rss"
-      #   topic: "Du Lịch"
-      # - url: "https://tuoitre.vn/video.rss"
-      #   topic: "Video"
+      - url: "https://tuoitre.vn/rss/gia-that.rss"
+        topic: "Giá Thật"
+      - url: "https://tuoitre.vn/rss/thu-gian.rss"
+        topic: "Thư Giãn"
+      - url: "https://tuoitre.vn/rss/ban-doc.rss"
+        topic: "Bạn Đọc"
+      - url: "https://tuoitre.vn/rss/du-lich.rss"
+        topic: "Du Lịch"
+      - url: "https://tuoitre.vn/video.rss"
+        topic: "Video"
 
   - name: "Thanh Niên"
     base_url: "https://thanhnien.vn/"

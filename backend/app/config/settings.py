@@ -52,7 +52,6 @@ class SchedulerSettings(BaseSettings):
     """Scheduler configuration for periodic tasks"""
 
     crawler_interval_minutes: int = 60
-    article_expiration_hours: int = 24
 
 
 class CrawlerSettings(BaseSettings):
@@ -60,6 +59,10 @@ class CrawlerSettings(BaseSettings):
 
     max_articles_per_feed: int = 100
     max_content_length: int = 50000
+    # Ingest cutoff: skip fetching articles if published_at < now - ingest_max_age_hours.
+    ingest_max_age_hours: int = 24
+    # Retention window: delete stored articles if created_at < now - retention_hours.
+    retention_hours: int = 24
     fetch_timeout_seconds: int = 30
     user_agent: str = "VeriNews/1.0"
 
@@ -105,9 +108,10 @@ class QueryExtractionSettings(BaseSettings):
     """Query extraction configuration"""
 
     enabled: bool = True
-    model: str = "gpt-4o-mini"
-    temperature: float = 0.1
     max_claims: int = 5
+    min_factual_confidence: float = 3.0
+    enable_similarity_filter: bool = False
+    similarity_threshold: float = 0.75
 
 
 class FusionSettings(BaseSettings):
@@ -117,22 +121,71 @@ class FusionSettings(BaseSettings):
     rrf_k: int = 60
 
 
+class EntityFilterSettings(BaseSettings):
+    """Entity filtering configuration for reranking"""
+
+    enabled: bool = True
+    min_entity_match_ratio: float = 0.2
+
+
+class ArticleLevelRerankingSettings(BaseSettings):
+    """Article-level reranking configuration"""
+
+    enabled: bool = True
+    num_parallel_workers: int = 8
+    worker_timeout_seconds: float = 5.0
+    max_concurrent_calls: int = 8
+    score_threshold: float = 5.0
+    max_articles_to_rerank: int = 15
+    min_items_for_split: int = 4
+
+
 class RerankingSettings(BaseSettings):
     """Reranking configuration"""
 
     enabled: bool = True
-    model: str = "gpt-4o-mini"
     top_n: int = 10
-    batch_size: int = 5
-    score_range: list[int] = [0, 100]
+    num_parallel_workers: int = 4
+    worker_timeout_seconds: float = 7.0
+    max_concurrent_calls: int = 4
+    score_threshold: int = 5  # Minimum score (0-10 scale)
+    entity_filter: EntityFilterSettings = EntityFilterSettings()
+    article_level: ArticleLevelRerankingSettings = ArticleLevelRerankingSettings()
 
 
 class AggregationSettings(BaseSettings):
     """Article aggregation configuration"""
 
-    score_threshold: float = 0.7
     max_articles: int = 10
     include_chunks: bool = True
+    min_chunk_score: float = 5.0  # Minimum max chunk score for article (0-10 scale)
+
+
+class ConfidenceScoringWeights(BaseSettings):
+    """Weights for confidence scoring components"""
+
+    top_article_score: float = 0.35
+    score_gap_ratio: float = 0.25
+    entity_coverage: float = 0.20
+    temporal_alignment: float = 0.10
+    title_similarity: float = 0.10
+
+
+class ConfidenceScoringThresholds(BaseSettings):
+    """Thresholds for confidence tiers"""
+
+    high: float = 0.75
+    medium: float = 0.50
+    low: float = 0.25
+
+
+class ConfidenceScoringSettings(BaseSettings):
+    """Confidence scoring configuration"""
+
+    enabled: bool = True
+    min_confidence_threshold: float = 0.25
+    weights: ConfidenceScoringWeights = ConfidenceScoringWeights()
+    thresholds: ConfidenceScoringThresholds = ConfidenceScoringThresholds()
 
 
 class CacheSettings(BaseSettings):
@@ -159,6 +212,7 @@ class RetrievalSettings(BaseSettings):
     fusion: FusionSettings
     reranking: RerankingSettings
     aggregation: AggregationSettings
+    confidence_scoring: ConfidenceScoringSettings
     cache: CacheSettings
 
 
@@ -237,6 +291,9 @@ class Settings(BaseSettings):
             fusion=FusionSettings(**retrieval_config.get("fusion", {})),
             reranking=RerankingSettings(**retrieval_config.get("reranking", {})),
             aggregation=AggregationSettings(**retrieval_config.get("aggregation", {})),
+            confidence_scoring=ConfidenceScoringSettings(
+                **retrieval_config.get("confidence_scoring", {})
+            ),
             cache=CacheSettings(**retrieval_config.get("cache", {})),
         )
 

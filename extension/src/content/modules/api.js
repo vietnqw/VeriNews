@@ -9,8 +9,8 @@ function adaptVeriNewsResponse(veriNewsData) {
     url: article.url || `#article-${article.article_id}`,
     title: article.title || "Bài viết không có tiêu đề",
     source: article.source_name || "Nguồn không xác định",
-    // Use the backend's normalized similarity_score directly
-    similarity: article.similarity_score || 0
+    // Normalize relevance_score from 0-10 scale to 0-1 for UI display
+    similarity: (article.relevance_score || 0) / 10
   }));
 
   // Extract claims if available (currently not returned by VeriNews API)

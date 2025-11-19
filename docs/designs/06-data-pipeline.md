@@ -11,6 +11,7 @@ The data pipeline continuously collects news articles from RSS feeds, extracts t
 - **Celery Beat**: Scheduler for periodic tasks
 - **Trafilatura**: Article content extraction
 - **OpenAI**: Embedding generation
+- **PyVi**: Vietnamese text tokenization
 
 ## The Pipeline (5 Stages)
 
@@ -18,7 +19,7 @@ The data pipeline continuously collects news articles from RSS feeds, extracts t
 
 **What happens**: Checks RSS feeds for new articles
 
-**Trigger**: Celery Beat runs every 60 minutes (configurable)
+**Trigger**: Celery Beat runs every 15 minutes (configurable)
 
 **Process**:
 1. Scheduler triggers `kickoff_all_crawls` task
@@ -26,20 +27,12 @@ The data pipeline continuously collects news articles from RSS feeds, extracts t
 3. For each feed:
    - Fetches RSS XML
    - Parses to extract article URLs
+   - **Ingest Cutoff**: Skips articles older than 24 hours (configurable)
    - Checks if URL already in database (skip if exists)
    - Creates Article record with basic metadata
 4. Enqueues article for processing
 
 **Feed configuration**: `config/sources.yaml`
-
-**Example feed**:
-```yaml
-- name: "BBC News"
-  feeds:
-    - url: "http://feeds.bbci.co.uk/news/rss.xml"
-      topic: "general"
-      fetch_frequency_minutes: 60
-```
 
 ### Stage 2: Content Scraping
 
@@ -55,36 +48,21 @@ The data pipeline continuously collects news articles from RSS feeds, extracts t
 5. Stores in Article.content field
 6. Enqueues for chunking
 
-**Fallback strategy**:
-- Primary: Trafilatura (best quality)
-- If fails: Store error, mark as failed
+### Stage 3: Text Chunking & Denormalization
 
-**Polite crawling**:
-- Respects robots.txt
-- Rate limiting per domain
-- 1-2 second delays between requests
-
-### Stage 3: Text Chunking
-
-**What happens**: Splits articles into 500-2000 character segments
+**What happens**: Splits articles into 500-2000 character segments and prepares them for search.
 
 **Process**:
 1. Receives article content
-2. Splits on paragraph boundaries
-3. Smart merging/splitting:
-   - Merge small paragraphs (< 500 chars)
-   - Split large paragraphs (> 2000 chars) on sentences
+2. Splits on paragraph boundaries (using smart `\n` and `\n\n` handling)
+3. **ParagraphChunker**:
+   - Merges small paragraphs (< 500 chars)
+   - Splits large paragraphs (> 2000 chars) on sentences
 4. Creates ArticleChunk records
-5. Stores each chunk with:
-   - article_id (foreign key)
-   - chunk_index (order)
-   - text content
-   - word count
-
-**Vietnamese optimization**:
-- Preserves compound words
-- Handles both `\n` and `\n\n` paragraph breaks
-- Sentence-aware splitting
+5. **Denormalization**: Copies metadata to chunk for faster retrieval:
+   - `article_title`
+   - `source_name`
+   - `published_at`
 
 **Result**: Average article → 5-20 chunks
 
@@ -93,34 +71,40 @@ The data pipeline continuously collects news articles from RSS feeds, extracts t
 **What happens**: Generates 1536-dimensional vectors for each chunk
 
 **Process**:
-1. Collects batches of pending chunks (100 at a time)
-2. Sends batch to OpenAI API
-3. Receives array of 1536-dim vectors
-4. Normalizes vectors to unit length
-5. Stores in ArticleChunk.embedding column
-6. Updates ArticleChunk status
-
-**Optimization**:
-- Batch processing (100 chunks per API call)
-- Parallel workers (4-8 concurrent)
-- Rate limiting (respects OpenAI limits)
+1. Iterates through chunks created in Stage 3
+2. Calls OpenAI API (`text-embedding-3-small`) for each chunk
+3. Stores vector in `ArticleChunk.embedding`
+4. Handling is integrated into the `process_article_task` (sequential processing per article)
 
 **Cost**: ~$0.001 per article (average 10 chunks)
 
-### Stage 5: Indexing
+### Stage 5: Indexing (Vector + Keyword)
 
-**What happens**: Creates database indexes for fast search
+**What happens**: Creates database indexes for fast hybrid search
 
 **Process**:
-1. Generates full-text search vector
-   - `to_tsvector('vietnamese', chunk.text)`
+1. **Vector Indexing**: `pgvector` automatically maintains IVFFlat index on `embedding` column.
+2. **Keyword Indexing**:
+   - Tokenizes text using `pyvi` (Vietnamese tokenizer)
+   - Generates search vector: `to_tsvector('simple', tokenized_text)`
    - Stores in `search_vector` column
-2. Vector indexes updated automatically by PostgreSQL
-3. Runs ANALYZE to update statistics
+   - Updates GIN index automatically
 
-**Indexes**:
-- IVFFlat index on embeddings (for vector search)
-- GIN index on search_vector (for text search)
+**Why `pyvi` + `simple`?**
+- PostgreSQL's built-in parsers don't handle Vietnamese compound words well (e.g., "nhà máy").
+- We tokenize in Python ("nhà_máy") and use 'simple' config to treat them as single tokens.
+
+## Data Retention & Cleanup
+
+To manage storage and relevance:
+
+1. **Ingest Cutoff**:
+   - Articles older than `crawler.ingest_max_age_hours` (default: 24h) are skipped during crawling.
+
+2. **Cleanup Task**:
+   - `cleanup_expired_articles` runs periodically
+   - Deletes articles created > `crawler.retention_hours` ago (default: 24h)
+   - Cascading deletes remove associated chunks and embeddings
 
 ## Task Queue Architecture
 
@@ -128,32 +112,19 @@ The data pipeline continuously collects news articles from RSS feeds, extracts t
 
 **Configuration**:
 - 4 workers (adjustable)
-- 4 threads per worker
-- Total: 16 concurrent tasks
-
-**Task priorities**:
-- RSS crawling: Normal
-- Content processing: Normal
-- Embedding generation: Normal
+- Handles concurrent processing of multiple feeds/articles
 
 ### Celery Beat (Scheduler)
 
 **Scheduled tasks**:
-- Crawl all feeds: Every 60 minutes
-- Cleanup failed: Daily at 2 AM
-- Rebuild indexes: Weekly Sunday 3 AM
+- Crawl all feeds: Every 15 minutes
+- Cleanup expired articles: Every 15 minutes
 
 ### Error Handling
 
 **Retry logic**:
 - Network errors: Retry 3 times with backoff
-- Rate limits: Wait and retry
-- Permanent failures: Mark as failed, don't retry
-
-**Failed article tracking**:
-- Stores error message
-- Increments error_count on feed
-- Auto-disables feed after many failures
+- Permanent failures: Logged and skipped
 
 ## CLI Commands
 
@@ -161,53 +132,25 @@ The data pipeline continuously collects news articles from RSS feeds, extracts t
 ```bash
 ./scripts/verinews crawler start   # Start workers + scheduler
 ./scripts/verinews crawler stop    # Stop all
-./scripts/verinews crawler status  # Check status
 ```
 
 **Feed Management**:
 ```bash
 ./scripts/verinews feeds sync    # Sync from sources.yaml
-./scripts/verinews feeds list    # List all feeds
-./scripts/verinews feeds add URL # Add new feed
-```
-
-**Monitoring**:
-```bash
-./scripts/verinews logs worker   # View worker logs
-./scripts/verinews logs beat     # View scheduler logs
 ```
 
 ## Performance
 
-**Throughput**:
-- Current: ~1000 articles/day
-- Scalable to: 10,000+ articles/day
-
 **Timing per article**:
 - RSS fetch: 5-10 seconds
 - Content scraping: 10-30 seconds
-- Chunking: 1-2 seconds
-- Embedding: 5-10 seconds
+- Chunking & Embedding: 5-10 seconds
 - **Total**: 30-60 seconds per article
-
-## Monitoring
-
-**Key metrics**:
-- Articles processed per hour
-- Success/failure rates
-- Queue lengths
-- Processing time per stage
-
-**Logs**:
-- Worker logs: `logs/celery-worker.log`
-- Beat logs: `logs/celery-beat.log`
 
 ## What's NOT Implemented
 
 - JavaScript rendering (for JS-heavy sites)
 - Paywall handling
-- Image extraction
-- Video transcription
-- Real-time processing (currently batch every hour)
-- Duplicate detection
-- Multi-region crawling
+- Image/Video analysis
+- Real-time processing (currently batch every 15 min)
+- Duplicate content detection (beyond URL check)

@@ -6,12 +6,12 @@ from __future__ import annotations
 
 import asyncio
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from typing import List
 
 from celery import shared_task
 from loguru import logger
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from sqlalchemy.exc import IntegrityError
 
 from app.config.database import async_session_maker, engine
@@ -83,6 +83,10 @@ def crawl_feed(feed_id: str) -> int:
 
                 entries = fetch_rss_feed(feed.feed_url)
                 max_new = settings.crawler.max_articles_per_feed
+                ingest_max_age_hours = settings.crawler.ingest_max_age_hours
+                cutoff_time = datetime.now(timezone.utc) - timedelta(
+                    hours=ingest_max_age_hours
+                )
 
                 # Cache existing URLs for quick duplicate checks
                 existing_urls = set()
@@ -96,6 +100,9 @@ def crawl_feed(feed_id: str) -> int:
                 new_article_ids = []
                 processed = 0
                 for e in entries:
+                    # Skip articles older than the ingest cutoff (if published_at is available)
+                    if e.get("published_at") and e["published_at"] < cutoff_time:
+                        continue
                     if e["link"] in existing_urls:
                         continue
                     if max_new > 0 and processed >= max_new:
@@ -186,3 +193,47 @@ def process_article_task(article_id: str) -> int:
     created_chunks = _run(_inner())
     logger.info(f"Article {article_id}: created {created_chunks} chunks")
     return created_chunks
+
+
+@shared_task(
+    autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3}
+)
+def cleanup_expired_articles() -> int:
+    """
+    Delete articles whose created_at is older than now - retention_hours.
+    Cascading deletes will remove related ArticleChunk rows.
+    """
+
+    async def _inner() -> int:
+        try:
+            async with async_session_maker() as session:
+                retention_hours = settings.crawler.retention_hours
+                cutoff_time = datetime.now(timezone.utc) - timedelta(
+                    hours=retention_hours
+                )
+
+                # Use RETURNING to count deleted rows reliably
+                result = await session.execute(
+                    delete(Article)
+                    .where(Article.created_at < cutoff_time)
+                    .returning(Article.id)
+                )
+                deleted_ids = [row[0] for row in result.fetchall()]
+                await session.commit()
+
+                deleted_count = len(deleted_ids)
+                if deleted_count > 0:
+                    logger.info(
+                        f"Deleted {deleted_count} expired articles older than {retention_hours}h"
+                    )
+                else:
+                    logger.debug(
+                        f"No expired articles found older than {retention_hours}h"
+                    )
+                return deleted_count
+        finally:
+            await engine.dispose()
+
+    deleted = _run(_inner())
+    logger.info(f"Cleanup complete: deleted {deleted} expired articles")
+    return deleted

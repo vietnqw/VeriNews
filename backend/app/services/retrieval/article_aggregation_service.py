@@ -2,7 +2,7 @@
 Article Aggregation Service
 
 Aggregates chunk-level scores to article-level results.
-Uses threshold + sum strategy to reward articles with multiple high-quality chunks.
+Uses maximum chunk score to measure article relevance.
 """
 
 from collections import defaultdict
@@ -36,8 +36,7 @@ class ArticleResult:
     title: str
     source_name: str
     published_at: datetime | None
-    relevance_score: float
-    similarity_score: float
+    relevance_score: float  # Maximum chunk score (0-10 scale)
     url: str
     relevant_chunks: List[ChunkDetail]
     chunk_count: int
@@ -52,7 +51,6 @@ class ArticleResult:
                 self.published_at.isoformat() if self.published_at else None
             ),
             "relevance_score": self.relevance_score,
-            "similarity_score": self.similarity_score,
             "url": self.url,
             "chunk_count": self.chunk_count,
             "relevant_chunks": [
@@ -71,16 +69,16 @@ class ArticleAggregationService:
     """
     Aggregates chunk-level retrieval results to article-level.
 
-    Strategy: Threshold + Sum
+    Strategy: Maximum Score
     - Only consider chunks with score >= threshold
-    - Sum scores for all qualifying chunks per article
-    - Articles with multiple high-quality chunks rank higher
+    - Use maximum chunk score as article relevance score
+    - Articles with the best matching chunk rank higher
     """
 
     def __init__(self, db=None):
-        self.score_threshold = settings.retrieval.aggregation.score_threshold
         self.max_articles = settings.retrieval.aggregation.max_articles
         self.include_chunks = settings.retrieval.aggregation.include_chunks
+        self.min_chunk_score = settings.retrieval.aggregation.min_chunk_score
         self.db = db
 
     async def aggregate_to_articles(
@@ -98,24 +96,18 @@ class ArticleAggregationService:
         if not chunks:
             return []
 
-        # Group chunks by article and accumulate scores
-        # Format: {article_id: {"score": float, "chunks": [ChunkDetail, ...], "metadata": {...}}}
-        article_scores: Dict[UUID, Dict] = defaultdict(
-            lambda: {"score": 0.0, "chunks": [], "metadata": {}}
+        # Group chunks by article and track max score
+        # Format: {article_id: {"max_score": float, "chunks": [ChunkDetail, ...], "metadata": {...}}}
+        article_data: Dict[UUID, Dict] = defaultdict(
+            lambda: {"max_score": 0.0, "chunks": [], "metadata": {}}
         )
 
         for chunk in chunks:
-            # Filter by threshold
-            if chunk.score < self.score_threshold:
-                logger.debug(
-                    f"Skipping chunk {chunk.chunk_id} with score {chunk.score:.4f} (below threshold {self.score_threshold})"
-                )
-                continue
-
             article_id = chunk.article_id
 
-            # Accumulate score
-            article_scores[article_id]["score"] += chunk.score
+            # Track maximum score
+            if chunk.score > article_data[article_id]["max_score"]:
+                article_data[article_id]["max_score"] = chunk.score
 
             # Add chunk detail
             chunk_detail = ChunkDetail(
@@ -124,11 +116,11 @@ class ArticleAggregationService:
                 chunk_text=chunk.chunk_text,
                 score=chunk.score,
             )
-            article_scores[article_id]["chunks"].append(chunk_detail)
+            article_data[article_id]["chunks"].append(chunk_detail)
 
             # Store metadata (from first chunk encountered)
-            if not article_scores[article_id]["metadata"]:
-                article_scores[article_id]["metadata"] = {
+            if not article_data[article_id]["metadata"]:
+                article_data[article_id]["metadata"] = {
                     "title": chunk.article_title or "Unknown Title",
                     "source_name": chunk.source_name or "Unknown Source",
                     "published_at": None,  # We don't have this in ChunkSearchResult
@@ -136,41 +128,53 @@ class ArticleAggregationService:
 
         # Fetch article URLs from database if available
         article_urls = {}
-        if self.db and article_scores:
+        if self.db and article_data:
             from sqlalchemy import select
             from app.models.article import Article
 
-            article_ids = list(article_scores.keys())
+            article_ids = list(article_data.keys())
             result = await self.db.execute(
                 select(Article.id, Article.url).where(Article.id.in_(article_ids))
             )
             article_urls = {row.id: row.url for row in result.all()}
 
-        # Calculate max score for normalization (0-1 range)
-        max_score = (
-            max(data["score"] for data in article_scores.values())
-            if article_scores
-            else 1.0
-        )
+        # Article filtering threshold (loaded from config)
+        MIN_CHUNK_SCORE = self.min_chunk_score
 
-        # Build ArticleResult objects
+        # Build ArticleResult objects with filtering
         articles = []
-        for article_id, data in article_scores.items():
-            # Normalize score to 0-1 range (similarity_score)
-            similarity_score = data["score"] / max_score if max_score > 0 else 0.0
+        filtered_count = 0
+        for article_id, data in article_data.items():
+            chunks = data["chunks"]
+            max_score = data["max_score"]
+            chunk_count = len(chunks)
+
+            # Validation: check max chunk score threshold
+            if max_score < MIN_CHUNK_SCORE:
+                filtered_count += 1
+                logger.debug(
+                    f"Filtered article {article_id}: "
+                    f"max={max_score:.2f} (min={MIN_CHUNK_SCORE})"
+                )
+                continue
 
             article_result = ArticleResult(
                 article_id=article_id,
                 title=data["metadata"]["title"],
                 source_name=data["metadata"]["source_name"],
                 published_at=data["metadata"]["published_at"],
-                relevance_score=data["score"],
-                similarity_score=similarity_score,
+                relevance_score=max_score,  # Use maximum chunk score
                 url=article_urls.get(article_id, ""),  # Empty string if not found
                 relevant_chunks=data["chunks"] if self.include_chunks else [],
-                chunk_count=len(data["chunks"]),
+                chunk_count=chunk_count,
             )
             articles.append(article_result)
+
+        if filtered_count > 0:
+            logger.info(
+                f"Max score filtering: {filtered_count} articles removed "
+                f"(max_score < {MIN_CHUNK_SCORE})"
+            )
 
         # Sort by relevance score (descending)
         articles.sort(key=lambda x: x.relevance_score, reverse=True)
@@ -178,8 +182,6 @@ class ArticleAggregationService:
         # Limit to max_articles
         articles = articles[: self.max_articles]
 
-        logger.info(
-            f"Aggregated {len(chunks)} chunks → {len(articles)} articles (threshold={self.score_threshold})"
-        )
+        logger.info(f"Aggregated {len(chunks)} chunks → {len(articles)} articles")
 
         return articles

@@ -60,7 +60,11 @@ def _create_celery() -> Celery:
         "kickoff-all-crawls": {
             "task": "app.tasks.crawler_tasks.kickoff_all_crawls",
             "schedule": interval_seconds,
-        }
+        },
+        "cleanup-expired-articles": {
+            "task": "app.tasks.crawler_tasks.cleanup_expired_articles",
+            "schedule": interval_seconds,
+        },
     }
     return app
 

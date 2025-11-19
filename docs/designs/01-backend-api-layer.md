@@ -13,6 +13,7 @@ The API Layer is the HTTP interface that receives requests and returns responses
 - Tests database connection
 - Verifies pgvector extension is available
 - Returns status for each component
+- Shows last crawled article timestamp
 
 **GET /api/v1/health/simple**
 - Simple ping endpoint
@@ -21,27 +22,54 @@ The API Layer is the HTTP interface that receives requests and returns responses
 ### Verification Endpoint
 
 **POST /api/v1/verify**
-- Accepts a social media post (text)
+- Accepts a social media post (text) and optional `cache_bypass` flag
 - Runs the full retrieval pipeline to find relevant articles
 - Returns list of matching articles with relevance scores
-- Includes timing information for each stage
+- Includes **detailed confidence metrics** and **early exit** status
 - Uses Redis caching for faster repeat queries
 
-**Note**: The actual verification (credibility scoring, verdict generation) is not yet implemented. Currently returns a dummy verification result. The article retrieval works fully.
+**Note**: The actual verification (truth-checking logic) is not yet implemented. Currently returns a dummy verification result, but the article retrieval and relevance scoring are fully functional.
 
 ## How It Works
 
-1. User sends POST request with post text
-2. API checks Redis cache for previous results
-3. If not cached, runs the 6-stage retrieval pipeline:
-   - Extract clean query and claims from post
-   - Generate embeddings
-   - Search using vector + keyword methods
-   - Combine results with RRF fusion
-   - Rerank using AI
-   - Aggregate chunks into articles
-4. Stores result in cache
-5. Returns articles with timing data
+1. **Request**: User sends POST request with `text`
+2. **Cache Check**: API checks Redis (unless `cache_bypass=true`)
+3. **Pipeline Execution**: Runs the 9-stage retrieval pipeline:
+   - **Extraction**: Get clean query + claims + entities
+   - **Embedding**: Generate vectors for all queries
+   - **Search**: Run Hybrid (Vector + BM25) search
+   - **Fusion**: Combine results with Reciprocal Rank Fusion
+   - **Chunk Reranking**: Score chunks with AI (parallel workers)
+   - **Aggregation**: Group chunks into articles
+   - **Article Reranking**: Validate full-article relevance
+   - **Confidence**: Calculate multi-signal confidence score
+   - **Validation**: Gate results based on confidence threshold
+4. **Caching**: Stores result in Redis (24h TTL)
+5. **Response**: Returns articles + confidence metrics + timing data
+
+## Response Structure
+
+The API returns a rich JSON response:
+
+```json
+{
+  "articles": [...],
+  "confidence_metrics": {
+    "overall_confidence": 0.85,
+    "confidence_tier": "HIGH",
+    "entity_coverage_ratio": 1.0
+  },
+  "retrieval_confidence": 0.85,
+  "factual_confidence": 3,
+  "low_confidence_warning": false,
+  "early_exit": false,
+  "exit_reason": null,
+  "message": null,
+  "total_time_ms": 1250,
+  "stage_timings": {...},
+  "cache_hit": false
+}
+```
 
 ## Technology
 
