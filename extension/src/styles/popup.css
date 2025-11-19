@@ -294,47 +294,71 @@ input:checked + .slider:before {
 
 /* --- Modal Footer --- */
 .vn-modal-footer {
-  border-top: 1px solid #e4e6eb;
-  padding-top: 10px;
-  margin-top: 15px;
+  border-top: 1px solid #e0e6ed;
+  padding: 16px 0 0 0;
+  margin-top: 20px;
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   align-items: center;
+  gap: 12px;
 }
 
 .vn-refresh-button {
-  background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border: none;
-  border-radius: 8px;
-  padding: 8px 16px;
+  border-radius: 25px;
+  padding: 12px 28px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 2px 5px rgba(52, 152, 219, 0.3);
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.35);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  letter-spacing: 0.3px;
 }
 
 .vn-refresh-button:hover:not(:disabled) {
-  background: linear-gradient(135deg, #2980b9 0%, #2471a3 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(52, 152, 219, 0.4);
+  background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+}
+
+.vn-refresh-button:active:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(102, 126, 234, 0.4);
 }
 
 .vn-refresh-button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
+  box-shadow: none;
+}
+
+.vn-footer-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .vn-footer-time {
   font-size: 12px;
-  color: #8a8d91;
-  font-style: italic;
+  color: #6b7280;
+  background: #f3f4f6;
+  padding: 4px 10px;
+  border-radius: 12px;
 }
 
 .vn-footer-cache {
-  font-size: 12px;
-  color: #8a8d91;
-  font-weight: 600;
+  font-size: 11px;
+  color: #6b7280;
+  background: #f3f4f6;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-weight: 500;
 }

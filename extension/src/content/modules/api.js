@@ -13,34 +13,65 @@ function adaptVeriNewsResponse(veriNewsData) {
     similarity: (article.relevance_score || 0) / 10
   }));
 
-  // Extract claims if available (currently not returned by VeriNews API)
+  // Extract claims if available
   const claims = veriNewsData.claims || [];
 
-  // Determine verdict based on available data
-  // Since verification is not implemented, default to "Unverified"
+  // Determine verdict based on verification result
   let overall_decision = "Unverified";
   let flag = "gray";
   let final_score = 0.0;
+  let claim_verdicts = [];
+  let confidence_metrics = null;
+  let explanation = "";
+  let sources_used = [];
 
-  // If verification is implemented in the future, use it
-  if (veriNewsData.verification && veriNewsData.verification.verdict !== "NOT_IMPLEMENTED") {
-    const verdict = veriNewsData.verification.verdict;
-    const confidence = veriNewsData.verification.confidence || 0;
+  // Check if verification result exists
+  if (veriNewsData.verification) {
+    const verification = veriNewsData.verification;
+    const verdict = verification.verdict;
+    final_score = verification.confidence || 0;
 
     // Map verdict to decision and flag
-    if (verdict === "VERIFIED" || verdict === "TRUE") {
-      overall_decision = "Verified";
+    if (verdict === "FULLY_SUPPORTED") {
+      overall_decision = "Fully Supported";
       flag = "green";
-      final_score = confidence;
-    } else if (verdict === "FALSE" || verdict === "MISLEADING") {
-      overall_decision = "Misleading/False";
-      flag = "red";
-      final_score = 1 - confidence;
-    } else if (verdict === "OUT_OF_CONTEXT") {
-      overall_decision = "Out of Context";
+    } else if (verdict === "PARTIALLY_SUPPORTED") {
+      overall_decision = "Partially Supported";
       flag = "yellow";
-      final_score = confidence;
+    } else if (verdict === "REFUTED") {
+      overall_decision = "Refuted";
+      flag = "red";
+    } else if (verdict === "NOT_ENOUGH_INFO") {
+      overall_decision = "Not Enough Info";
+      flag = "gray";
     }
+
+    // Extract claim verdicts
+    claim_verdicts = (verification.claim_verdicts || []).map(cv => ({
+      claim_text: cv.claim_text,
+      verdict: cv.verdict,
+      confidence: cv.confidence,
+      supporting_evidence: cv.supporting_evidence || [],
+      refuting_evidence: cv.refuting_evidence || []
+    }));
+
+    // Extract confidence metrics
+    if (verification.confidence_metrics) {
+      const metrics = verification.confidence_metrics;
+      confidence_metrics = {
+        overall_confidence: metrics.overall_confidence,
+        confidence_tier: metrics.confidence_tier,
+        evidence_quality: metrics.evidence_quality,
+        source_agreement: metrics.source_agreement,
+        claim_coverage: metrics.claim_coverage,
+        stance_confidence: metrics.stance_confidence,
+        temporal_relevance: metrics.temporal_relevance
+      };
+    }
+
+    // Extract explanation and sources
+    explanation = verification.explanation || "";
+    sources_used = verification.sources_used || [];
   }
 
   // Build response in MVP format
@@ -51,13 +82,26 @@ function adaptVeriNewsResponse(veriNewsData) {
     flag,
     final_score,
 
-    // Per-criterion scores not available in VeriNews yet
-    per_criterion_scores: {
-      content_similarity: 0.0,
-      support_ratio: 0.0,
-      contradiction_ratio: 0.0,
-      not_mentioned_ratio: 0.0
-    },
+    // Claim-level verdicts with evidence
+    claim_verdicts,
+
+    // Confidence metrics breakdown
+    confidence_metrics,
+
+    // Vietnamese explanation
+    explanation,
+
+    // Sources used for verification
+    sources_used,
+
+    // Per-criterion scores mapped from confidence metrics
+    per_criterion_scores: confidence_metrics ? {
+      evidence_quality: confidence_metrics.evidence_quality || 0,
+      source_agreement: confidence_metrics.source_agreement || 0,
+      claim_coverage: confidence_metrics.claim_coverage || 0,
+      stance_confidence: confidence_metrics.stance_confidence || 0,
+      temporal_relevance: confidence_metrics.temporal_relevance || 0
+    } : null,
 
     // Contextual judgment not available
     contextual_judgment: null,
@@ -72,7 +116,11 @@ function adaptVeriNewsResponse(veriNewsData) {
       total_time_ms: veriNewsData.total_time_ms,
       stage_timings: veriNewsData.stage_timings,
       query_count: veriNewsData.query_count,
-      cache_hit: veriNewsData.cache_hit
+      cache_hit: veriNewsData.cache_hit,
+      factual_confidence: veriNewsData.factual_confidence,
+      retrieval_confidence: veriNewsData.retrieval_confidence,
+      early_exit: veriNewsData.early_exit,
+      exit_reason: veriNewsData.exit_reason
     }
   };
 }
