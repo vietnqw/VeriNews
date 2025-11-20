@@ -13,6 +13,7 @@ from app.core.logging import get_logger
 from app.schemas.verification import (
     ClaimVerdictSchema,
     ClaimVerdictType,
+    EvidenceSpan,
     OverallVerdictType,
     StanceResultSchema,
     StanceType,
@@ -20,7 +21,7 @@ from app.schemas.verification import (
     VerificationResultSchema,
 )
 from app.services.retrieval.article_aggregation_service import ArticleResult
-from app.services.verification.claim_evidence_mapper import ClaimEvidenceMapper
+from app.services.verification.claim_article_mapper import ClaimArticleMapper
 from app.services.verification.explanation_generator import ExplanationGenerator
 from app.services.verification.stance_classifier import StanceClassifier
 from app.services.verification.verdict_aggregator import VerdictAggregator
@@ -33,7 +34,7 @@ class VerificationService:
     Main orchestrator for the verification pipeline.
 
     Coordinates the following stages:
-    1. Claim-Evidence Mapping
+    1. Claim-Article Mapping
     2. Stance Classification (NLI)
     3. Verdict Aggregation
     4. Explanation Generation
@@ -41,7 +42,7 @@ class VerificationService:
 
     def __init__(self):
         self.enabled = settings.verification.enabled
-        self.claim_evidence_mapper = ClaimEvidenceMapper()
+        self.claim_article_mapper = ClaimArticleMapper()
         self.stance_classifier = StanceClassifier()
         self.verdict_aggregator = VerdictAggregator()
         self.explanation_generator = ExplanationGenerator()
@@ -84,23 +85,23 @@ class VerificationService:
 
         total_start = time.time()
 
-        # Stage 1: Claim-Evidence Mapping
+        # Stage 1: Claim-Article Mapping
         start = time.time()
-        claim_evidence_mappings = (
-            await self.claim_evidence_mapper.map_claims_to_evidence(claims, articles)
+        claim_article_mappings = await self.claim_article_mapper.map_claims_to_articles(
+            claims, articles
         )
-        stage_timings["claim_evidence_mapping"] = (time.time() - start) * 1000
+        stage_timings["claim_article_mapping"] = (time.time() - start) * 1000
 
-        # Check if we have any evidence
-        total_evidence = sum(len(m.evidence_chunks) for m in claim_evidence_mappings)
-        if total_evidence == 0:
-            logger.warning("No evidence found for any claims")
+        # Check if we have any articles with content
+        total_articles = sum(len(m.articles) for m in claim_article_mappings)
+        if total_articles == 0:
+            logger.warning("No articles with content found for verification")
             return self._create_no_evidence_result(claims), stage_timings
 
         # Stage 2: Stance Classification
         start = time.time()
         stance_results = await self.stance_classifier.classify_stances(
-            claim_evidence_mappings
+            claim_article_mappings
         )
         stage_timings["stance_classification"] = (time.time() - start) * 1000
 
@@ -153,14 +154,18 @@ class VerificationService:
             supporting = [
                 StanceResultSchema(
                     claim_text=e.claim_text,
-                    evidence_chunk_id=str(e.evidence_chunk_id),
-                    evidence_text=e.evidence_text,
+                    article_id=str(e.article_id),
+                    article_title=e.article_title,
+                    article_url=e.article_url,
                     source_name=e.source_name,
                     published_at=e.published_at.isoformat() if e.published_at else None,
                     stance=StanceType(e.stance),
                     confidence=e.confidence,
-                    key_quote=e.key_quote,
-                    reasoning=e.reasoning,
+                    evidence_spans=[
+                        EvidenceSpan(text=span.text, reasoning=span.reasoning)
+                        for span in e.evidence_spans
+                    ],
+                    overall_reasoning=e.overall_reasoning,
                 )
                 for e in cv.supporting_evidence
             ]
@@ -169,14 +174,18 @@ class VerificationService:
             refuting = [
                 StanceResultSchema(
                     claim_text=e.claim_text,
-                    evidence_chunk_id=str(e.evidence_chunk_id),
-                    evidence_text=e.evidence_text,
+                    article_id=str(e.article_id),
+                    article_title=e.article_title,
+                    article_url=e.article_url,
                     source_name=e.source_name,
                     published_at=e.published_at.isoformat() if e.published_at else None,
                     stance=StanceType(e.stance),
                     confidence=e.confidence,
-                    key_quote=e.key_quote,
-                    reasoning=e.reasoning,
+                    evidence_spans=[
+                        EvidenceSpan(text=span.text, reasoning=span.reasoning)
+                        for span in e.evidence_spans
+                    ],
+                    overall_reasoning=e.overall_reasoning,
                 )
                 for e in cv.refuting_evidence
             ]

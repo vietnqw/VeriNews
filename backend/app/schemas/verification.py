@@ -35,12 +35,20 @@ class OverallVerdictType(str, Enum):
     NOT_ENOUGH_INFO = "NOT_ENOUGH_INFO"
 
 
+class EvidenceSpan(BaseModel):
+    """Extracted evidence span from article"""
+
+    text: str = Field(description="Exact quote from article")
+    reasoning: str = Field(description="Why this text supports/refutes the claim")
+
+
 class StanceResultSchema(BaseModel):
-    """Result of stance classification for a claim-evidence pair"""
+    """Result of stance classification for a claim-article pair"""
 
     claim_text: str = Field(description="The claim being verified")
-    evidence_chunk_id: str = Field(description="ID of the evidence chunk")
-    evidence_text: str = Field(description="Text of the evidence chunk")
+    article_id: str = Field(description="ID of the article")
+    article_title: str = Field(description="Title of the article")
+    article_url: str = Field(description="URL of the article")
     source_name: str = Field(description="Name of the news source")
     published_at: str | None = Field(description="Publication date of the article")
     stance: StanceType = Field(
@@ -49,9 +57,12 @@ class StanceResultSchema(BaseModel):
     confidence: float = Field(
         ge=0.0, le=1.0, description="LLM confidence in stance classification"
     )
-    key_quote: str = Field(description="Key quote from evidence supporting the stance")
-    reasoning: str = Field(
-        description="Brief explanation for the stance classification"
+    evidence_spans: List[EvidenceSpan] = Field(
+        default_factory=list,
+        description="Exact text spans extracted from article as evidence",
+    )
+    overall_reasoning: str = Field(
+        description="Comprehensive explanation for the stance classification"
     )
 
 
