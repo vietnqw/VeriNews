@@ -40,6 +40,7 @@ class ArticleResult:
     url: str
     relevant_chunks: List[ChunkDetail]
     chunk_count: int
+    content: str | None = None  # Full article content for verification
 
     def to_dict(self) -> Dict:
         """Convert to dictionary for JSON serialization"""
@@ -126,17 +127,26 @@ class ArticleAggregationService:
                     "published_at": None,  # We don't have this in ChunkSearchResult
                 }
 
-        # Fetch article URLs from database if available
-        article_urls = {}
+        # Fetch article URLs and content from database if available
+        article_metadata = {}
         if self.db and article_data:
             from sqlalchemy import select
             from app.models.article import Article
 
             article_ids = list(article_data.keys())
             result = await self.db.execute(
-                select(Article.id, Article.url).where(Article.id.in_(article_ids))
+                select(
+                    Article.id, Article.url, Article.content, Article.published_at
+                ).where(Article.id.in_(article_ids))
             )
-            article_urls = {row.id: row.url for row in result.all()}
+            article_metadata = {
+                row.id: {
+                    "url": row.url,
+                    "content": row.content,
+                    "published_at": row.published_at,
+                }
+                for row in result.all()
+            }
 
         # Article filtering threshold (loaded from config)
         MIN_CHUNK_SCORE = self.min_chunk_score
@@ -158,15 +168,21 @@ class ArticleAggregationService:
                 )
                 continue
 
+            metadata = article_metadata.get(article_id, {})
             article_result = ArticleResult(
                 article_id=article_id,
                 title=data["metadata"]["title"],
                 source_name=data["metadata"]["source_name"],
-                published_at=data["metadata"]["published_at"],
+                published_at=metadata.get(
+                    "published_at", data["metadata"]["published_at"]
+                ),
                 relevance_score=max_score,  # Use maximum chunk score
-                url=article_urls.get(article_id, ""),  # Empty string if not found
+                url=metadata.get("url", ""),  # Empty string if not found
                 relevant_chunks=data["chunks"] if self.include_chunks else [],
                 chunk_count=chunk_count,
+                content=metadata.get(
+                    "content"
+                ),  # Full article content for verification
             )
             articles.append(article_result)
 
