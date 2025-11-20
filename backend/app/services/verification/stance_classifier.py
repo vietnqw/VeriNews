@@ -16,36 +16,45 @@ from app.config.settings import settings
 from app.core.logging import get_logger
 from app.services.ai.base import LLMMessage
 from app.services.ai.factory import AIServiceFactory
-from app.services.verification.claim_evidence_mapper import (
-    ClaimEvidenceMapping,
-    EvidenceChunk,
+from app.services.verification.claim_article_mapper import (
+    ArticleEvidence,
+    ClaimArticleMapping,
 )
 
 logger = get_logger(__name__)
 
 
 @dataclass
+class EvidenceSpan:
+    """Extracted evidence span from article"""
+
+    text: str
+    reasoning: str
+
+
+@dataclass
 class StanceResult:
-    """Result of stance classification for a claim-evidence pair"""
+    """Result of stance classification for a claim-article pair"""
 
     claim_text: str
-    evidence_chunk_id: UUID
-    evidence_text: str
+    article_id: UUID
+    article_title: str
+    article_url: str
     source_name: str
     published_at: datetime | None
     stance: str  # SUPPORTS, REFUTES, NOT_ENOUGH_INFO
     confidence: float
-    key_quote: str
-    reasoning: str
-    similarity_score: float  # From evidence mapping
+    evidence_spans: List[EvidenceSpan]  # Exact quotes extracted from article
+    overall_reasoning: str  # Comprehensive explanation
 
 
 class StanceClassifier:
     """
     LLM-based stance classifier using Natural Language Inference.
 
-    Determines whether evidence supports, refutes, or is neutral to a claim.
-    Uses parallel workers for efficient processing of multiple claim-evidence pairs.
+    Determines whether a full article supports, refutes, or is neutral to a claim.
+    Extracts precise evidence spans (quotes) from the article to support the stance.
+    Uses parallel workers for efficient processing of multiple claim-article pairs.
     """
 
     def __init__(self):
@@ -61,29 +70,29 @@ class StanceClassifier:
 
     async def classify_stances(
         self,
-        claim_evidence_mappings: List[ClaimEvidenceMapping],
+        claim_article_mappings: List[ClaimArticleMapping],
     ) -> List[StanceResult]:
         """
-        Classify stances for all claim-evidence pairs.
+        Classify stances for all claim-article pairs.
 
         Args:
-            claim_evidence_mappings: List of claims with their evidence chunks
+            claim_article_mappings: List of claims with their full articles
 
         Returns:
             List of StanceResult objects for all pairs
         """
-        # Flatten all claim-evidence pairs
+        # Flatten all claim-article pairs
         pairs = []
-        for mapping in claim_evidence_mappings:
-            for evidence in mapping.evidence_chunks:
-                pairs.append((mapping.claim_text, evidence))
+        for mapping in claim_article_mappings:
+            for article in mapping.articles:
+                pairs.append((mapping.claim_text, article))
 
         if not pairs:
-            logger.warning("No claim-evidence pairs to classify")
+            logger.warning("No claim-article pairs to classify")
             return []
 
         logger.info(
-            f"Classifying {len(pairs)} claim-evidence pairs with {self.num_workers} workers"
+            f"Classifying {len(pairs)} claim-article pairs with {self.num_workers} workers"
         )
 
         # Create round-robin batches for parallel workers
@@ -120,7 +129,7 @@ class StanceClassifier:
         Split pairs into round-robin batches for parallel workers.
 
         Args:
-            pairs: List of (claim, evidence) tuples
+            pairs: List of (claim, article) tuples
 
         Returns:
             List of batches (one per worker)
@@ -140,10 +149,10 @@ class StanceClassifier:
         semaphore: asyncio.Semaphore,
     ) -> List[StanceResult]:
         """
-        Process a batch of claim-evidence pairs in one worker.
+        Process a batch of claim-article pairs in one worker.
 
         Args:
-            batch: List of (claim, evidence) tuples
+            batch: List of (claim, article) tuples
             worker_id: Worker identifier
             semaphore: Semaphore for rate limiting
 
@@ -155,11 +164,11 @@ class StanceClassifier:
 
         results = []
 
-        for claim, evidence in batch:
+        for claim, article in batch:
             try:
                 async with semaphore:
                     result = await asyncio.wait_for(
-                        self._classify_single_pair(claim, evidence),
+                        self._classify_single_pair(claim, article),
                         timeout=self.worker_timeout,
                     )
                     if result:
@@ -167,41 +176,41 @@ class StanceClassifier:
             except asyncio.TimeoutError:
                 logger.warning(
                     f"Worker {worker_id} timed out on pair. "
-                    f"Claim: '{claim[:30]}...', Evidence chunk: {evidence.chunk_id}"
+                    f"Claim: '{claim[:30]}...', Article: {article.article_id}"
                 )
                 # Create a default NOT_ENOUGH_INFO result
                 results.append(
                     StanceResult(
                         claim_text=claim,
-                        evidence_chunk_id=evidence.chunk_id,
-                        evidence_text=evidence.chunk_text,
-                        source_name=evidence.source_name,
-                        published_at=evidence.published_at,
+                        article_id=article.article_id,
+                        article_title=article.article_title,
+                        article_url=article.url,
+                        source_name=article.source_name,
+                        published_at=article.published_at,
                         stance="NOT_ENOUGH_INFO",
                         confidence=0.0,
-                        key_quote="",
-                        reasoning="Timeout during classification",
-                        similarity_score=evidence.similarity_score,
+                        evidence_spans=[],
+                        overall_reasoning="Timeout during classification",
                     )
                 )
             except Exception as e:
                 logger.error(
                     f"Worker {worker_id} error: {e}. "
-                    f"Claim: '{claim[:30]}...', Evidence: {evidence.chunk_id}"
+                    f"Claim: '{claim[:30]}...', Article: {article.article_id}"
                 )
                 # Create a default NOT_ENOUGH_INFO result
                 results.append(
                     StanceResult(
                         claim_text=claim,
-                        evidence_chunk_id=evidence.chunk_id,
-                        evidence_text=evidence.chunk_text,
-                        source_name=evidence.source_name,
-                        published_at=evidence.published_at,
+                        article_id=article.article_id,
+                        article_title=article.article_title,
+                        article_url=article.url,
+                        source_name=article.source_name,
+                        published_at=article.published_at,
                         stance="NOT_ENOUGH_INFO",
                         confidence=0.0,
-                        key_quote="",
-                        reasoning=f"Error: {str(e)}",
-                        similarity_score=evidence.similarity_score,
+                        evidence_spans=[],
+                        overall_reasoning=f"Error: {str(e)}",
                     )
                 )
 
@@ -209,19 +218,19 @@ class StanceClassifier:
         return results
 
     async def _classify_single_pair(
-        self, claim: str, evidence: EvidenceChunk
+        self, claim: str, article: ArticleEvidence
     ) -> StanceResult | None:
         """
-        Classify stance for a single claim-evidence pair using LLM.
+        Classify stance for a single claim-article pair using LLM.
 
         Args:
             claim: The claim text
-            evidence: The evidence chunk
+            article: The full article
 
         Returns:
             StanceResult or None if classification fails
         """
-        prompt = self._build_stance_prompt(claim, evidence)
+        prompt = self._build_stance_prompt(claim, article)
 
         try:
             messages = [LLMMessage(role="user", content=prompt)]
@@ -237,8 +246,8 @@ class StanceClassifier:
 
             stance = result.get("stance", "NOT_ENOUGH_INFO")
             confidence = float(result.get("confidence", 0.5))
-            key_quote = result.get("key_quote", "")
-            reasoning = result.get("reasoning", "")
+            evidence_spans_raw = result.get("evidence_spans", [])
+            overall_reasoning = result.get("overall_reasoning", "")
 
             # Validate stance
             if stance not in ["SUPPORTS", "REFUTES", "NOT_ENOUGH_INFO"]:
@@ -247,17 +256,28 @@ class StanceClassifier:
                 )
                 stance = "NOT_ENOUGH_INFO"
 
+            # Parse evidence spans
+            evidence_spans = []
+            for span_data in evidence_spans_raw:
+                if isinstance(span_data, dict):
+                    evidence_spans.append(
+                        EvidenceSpan(
+                            text=span_data.get("text", ""),
+                            reasoning=span_data.get("reasoning", ""),
+                        )
+                    )
+
             return StanceResult(
                 claim_text=claim,
-                evidence_chunk_id=evidence.chunk_id,
-                evidence_text=evidence.chunk_text,
-                source_name=evidence.source_name,
-                published_at=evidence.published_at,
+                article_id=article.article_id,
+                article_title=article.article_title,
+                article_url=article.url,
+                source_name=article.source_name,
+                published_at=article.published_at,
                 stance=stance,
                 confidence=confidence,
-                key_quote=key_quote,
-                reasoning=reasoning,
-                similarity_score=evidence.similarity_score,
+                evidence_spans=evidence_spans,
+                overall_reasoning=overall_reasoning,
             )
 
         except json.JSONDecodeError as e:
@@ -267,51 +287,78 @@ class StanceClassifier:
             logger.error(f"Stance classification error: {e}")
             raise
 
-    def _build_stance_prompt(self, claim: str, evidence: EvidenceChunk) -> str:
+    def _build_stance_prompt(self, claim: str, article: ArticleEvidence) -> str:
         """
         Build prompt for stance classification.
 
         Args:
             claim: The claim to verify
-            evidence: The evidence chunk
+            article: The full article
 
         Returns:
             Prompt string
         """
         # Format publication date
         pub_date = ""
-        if evidence.published_at:
-            pub_date = evidence.published_at.strftime("%Y-%m-%d")
+        if article.published_at:
+            pub_date = article.published_at.strftime("%Y-%m-%d")
 
-        prompt = f"""Bạn là một trợ lý kiểm chứng thông tin. Phân tích xem BẰNG CHỨNG có ủng hộ hay bác bỏ TUYÊN BỐ hay không.
+        # Truncate article content if too long (keep first 8000 chars to avoid token limits)
+        article_content = article.article_content
+        if len(article_content) > 8000:
+            article_content = (
+                article_content[:8000] + "\n\n[...bài viết còn tiếp, đã cắt ngắn...]"
+            )
+
+        prompt = f"""Bạn là một trợ lý kiểm chứng thông tin. Phân tích xem BÀI BÁO có ủng hộ hay bác bỏ TUYÊN BỐ hay không.
 
 TUYÊN BỐ:
 "{claim}"
 
-BẰNG CHỨNG (từ {evidence.source_name}, đăng ngày {pub_date}):
-"{evidence.chunk_text}"
+BÀI BÁO (từ {article.source_name}, đăng ngày {pub_date}):
+Tiêu đề: {article.article_title}
+
+Nội dung:
+{article_content}
+
+---
+
+Nhiệm vụ của bạn:
+1. Đọc toàn bộ bài báo để hiểu ngữ cảnh đầy đủ
+2. Xác định xem bài báo có ủng hộ (SUPPORTS), bác bỏ (REFUTES), hay không đủ thông tin (NOT_ENOUGH_INFO) về tuyên bố
+3. Trích xuất các đoạn văn bản CHÍNH XÁC từ bài báo làm bằng chứng
 
 Phân loại mối quan hệ:
-- SUPPORTS: Bằng chứng trực tiếp xác nhận tuyên bố là đúng
-- REFUTES: Bằng chứng trực tiếp chứng minh tuyên bố là sai
-- NOT_ENOUGH_INFO: Bằng chứng liên quan nhưng không đủ để xác nhận hoặc bác bỏ
+- SUPPORTS: Bài báo trực tiếp xác nhận tuyên bố là đúng
+- REFUTES: Bài báo trực tiếp chứng minh tuyên bố là sai
+- NOT_ENOUGH_INFO: Bài báo liên quan nhưng không đủ để xác nhận hoặc bác bỏ
 
 Hướng dẫn đánh giá:
-1. SUPPORTS: Bằng chứng phải khẳng định CÙNG thông tin với tuyên bố (cùng số liệu, cùng sự kiện, cùng chi tiết)
-2. REFUTES: Bằng chứng phải ĐƯA RA thông tin TRÁI NGƯỢC (số liệu khác, phủ nhận sự kiện, chi tiết mâu thuẫn)
-3. NOT_ENOUGH_INFO: Bằng chứng nói về chủ đề liên quan nhưng không trực tiếp xác nhận/bác bỏ tuyên bố cụ thể
+1. SUPPORTS: Bài báo phải khẳng định CÙNG thông tin với tuyên bố (cùng số liệu, cùng sự kiện, cùng chi tiết)
+2. REFUTES: Bài báo phải ĐƯA RA thông tin TRÁI NGƯỢC (số liệu khác, phủ nhận sự kiện, chi tiết mâu thuẫn)
+3. NOT_ENOUGH_INFO: Bài báo nói về chủ đề liên quan nhưng không trực tiếp xác nhận/bác bỏ tuyên bố cụ thể
 
 Lưu ý quan trọng:
 - Chỉ chọn SUPPORTS hoặc REFUTES khi bằng chứng RÕ RÀNG và TRỰC TIẾP
 - Nếu không chắc chắn, chọn NOT_ENOUGH_INFO
-- Trích dẫn chính xác câu/cụm từ quan trọng từ bằng chứng
+- Trích dẫn CHÍNH XÁC các câu/đoạn văn từ bài báo (không được tóm tắt hay diễn giải)
+- Có thể trích nhiều đoạn nếu cần thiết
 
 Trả lời dưới dạng JSON:
 {{
     "stance": "SUPPORTS|REFUTES|NOT_ENOUGH_INFO",
     "confidence": 0.0-1.0,
-    "key_quote": "trích dẫn chính xác từ bằng chứng",
-    "reasoning": "giải thích ngắn gọn bằng tiếng Việt"
+    "evidence_spans": [
+        {{
+            "text": "trích dẫn chính xác từ bài báo",
+            "reasoning": "giải thích tại sao đoạn này ủng hộ/bác bỏ tuyên bố"
+        }},
+        {{
+            "text": "trích dẫn khác nếu cần",
+            "reasoning": "giải thích cho trích dẫn này"
+        }}
+    ],
+    "overall_reasoning": "tổng hợp giải thích toàn diện về stance classification (2-3 câu)"
 }}"""
 
         return prompt
