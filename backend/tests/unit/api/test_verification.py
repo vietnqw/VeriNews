@@ -61,6 +61,8 @@ class TestVerificationAPI:
             relevance_score=0.85,
             chunk_count=1,
             relevant_chunks=[chunk],
+            url="https://vnexpress.net/sample-article",
+            content="This is the full article content for verification testing.",
         )
         return article
 
