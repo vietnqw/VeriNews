@@ -276,8 +276,9 @@ class VerdictAggregator:
                 temporal_relevance=0.0,
             )
 
-        # Signal 1: Evidence Quality (30%) - average similarity score
-        evidence_quality = sum(s.similarity_score for s in stance_results) / len(
+        # Signal 1: Evidence Quality (30%) - average stance confidence
+        # (Previously used similarity score, now using LLM confidence as quality indicator)
+        evidence_quality = sum(s.confidence for s in stance_results) / len(
             stance_results
         )
 
