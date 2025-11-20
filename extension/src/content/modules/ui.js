@@ -342,7 +342,7 @@ function showContentPopup(content, apiResponse) {
 
         const claimNumber = document.createElement("span");
         claimNumber.className = "vn-claim-number";
-        claimNumber.innerText = `Nội dung thứ ${index + 1}:`;
+        claimNumber.innerText = `Nội dung ${index + 1}:`;
 
         const claimVerdictBadge = document.createElement("span");
         const info = verdictInfo[cv.verdict] || { text: cv.verdict, color: "gray", icon: "?" };

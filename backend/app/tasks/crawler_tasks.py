@@ -11,8 +11,8 @@ from typing import List
 
 from celery import shared_task
 from loguru import logger
-from sqlalchemy import select, delete
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import select, delete, text
+from sqlalchemy.exc import IntegrityError, OperationalError
 
 from app.config.database import async_session_maker, engine
 from app.models.article import Article
@@ -34,6 +34,37 @@ def _run(coro):
     return asyncio.run(coro)
 
 
+async def _wait_for_database_ready(
+    max_attempts: int = 5, delay_seconds: float = 1.0
+) -> None:
+    """
+    Ensure the database is reachable before continuing.
+
+    Retries a lightweight SELECT with exponential backoff to handle cases
+    where Postgres is still starting up (common when Docker containers restart).
+    """
+    last_error: Exception | None = None
+    for attempt in range(1, max_attempts + 1):
+        try:
+            async with async_session_maker() as session:
+                await session.execute(text("SELECT 1"))
+            if attempt > 1:
+                logger.info("Database connection restored after %d attempts", attempt)
+            return
+        except (OperationalError, OSError, ConnectionRefusedError) as exc:
+            last_error = exc
+            logger.warning(
+                "Database not ready (attempt %d/%d): %s",
+                attempt,
+                max_attempts,
+                exc,
+            )
+            await asyncio.sleep(delay_seconds * attempt)
+    raise RuntimeError(
+        f"Database unavailable after {max_attempts} attempts"
+    ) from last_error
+
+
 @shared_task(
     autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3}
 )
@@ -41,6 +72,7 @@ def kickoff_all_crawls() -> int:
     """Fan-out crawl tasks for all active feeds."""
 
     async def _inner() -> int:
+        await _wait_for_database_ready()
         count = 0
         try:
             # Clear the retrieval cache at the start of the crawl cycle
@@ -73,6 +105,7 @@ def crawl_feed(feed_id: str) -> int:
     """Fetch RSS and enqueue processing for new articles."""
 
     async def _inner() -> int:
+        await _wait_for_database_ready()
         new_count = 0
         try:
             async with async_session_maker() as session:
@@ -159,6 +192,7 @@ def process_article_task(article_id: str) -> int:
     """Scrape article content and create chunks+embeddings."""
 
     async def _inner() -> int:
+        await _wait_for_database_ready()
         try:
             async with async_session_maker() as session:
                 aid = uuid.UUID(article_id)
@@ -205,6 +239,7 @@ def cleanup_expired_articles() -> int:
     """
 
     async def _inner() -> int:
+        await _wait_for_database_ready()
         try:
             async with async_session_maker() as session:
                 retention_hours = settings.crawler.retention_hours
@@ -215,7 +250,10 @@ def cleanup_expired_articles() -> int:
                 # Use RETURNING to count deleted rows reliably
                 result = await session.execute(
                     delete(Article)
-                    .where(Article.created_at < cutoff_time)
+                    .where(
+                        Article.created_at < cutoff_time,
+                        Article.content.isnot(None),
+                    )
                     .returning(Article.id)
                 )
                 deleted_ids = [row[0] for row in result.fetchall()]

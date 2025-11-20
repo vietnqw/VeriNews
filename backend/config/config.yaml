@@ -10,12 +10,12 @@ celery:
 
 # Scheduler Configuration
 scheduler:
-  crawler_interval_minutes: 15  # How often to run the news crawler and cleanup tasks
+  crawler_interval_minutes: 5  # How often to run the news crawler and cleanup tasks
 
 # Crawler Configuration
 crawler:
   # Ingest cutoff: skip fetching articles if published_at < now - ingest_max_age_hours.
-  ingest_max_age_hours: 24
+  ingest_max_age_hours: 48
   # Retention window: delete stored articles if created_at < now - retention_hours.
   retention_hours: 24
   max_articles_per_feed: 50  # Maximum articles to fetch per RSS feed (-1 for unlimited)
