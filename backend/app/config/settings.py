@@ -202,13 +202,6 @@ class CacheSettings(BaseSettings):
 
 
 # Verification Pipeline Settings
-class ClaimEvidenceMappingSettings(BaseSettings):
-    """Claim-evidence mapping configuration"""
-
-    top_k_chunks_per_claim: int = 5
-    min_similarity_threshold: float = 0.7
-
-
 class StanceClassificationSettings(BaseSettings):
     """Stance classification (NLI) configuration"""
 
@@ -272,7 +265,6 @@ class VerificationSettings(BaseSettings):
     """Verification pipeline configuration"""
 
     enabled: bool = True
-    claim_evidence_mapping: ClaimEvidenceMappingSettings
     stance_classification: StanceClassificationSettings
     aggregation: VerificationAggregationSettings
     verdict: VerdictSettings
@@ -383,9 +375,6 @@ class Settings(BaseSettings):
         verification_config = yaml_config.get("verification", {})
         return VerificationSettings(
             enabled=verification_config.get("enabled", True),
-            claim_evidence_mapping=ClaimEvidenceMappingSettings(
-                **verification_config.get("claim_evidence_mapping", {})
-            ),
             stance_classification=StanceClassificationSettings(
                 **verification_config.get("stance_classification", {})
             ),

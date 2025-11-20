@@ -119,11 +119,6 @@ retrieval:
 verification:
   enabled: true  # Enable verification service
 
-  # Claim-evidence mapping
-  claim_evidence_mapping:
-    top_k_chunks_per_claim: 5  # Number of evidence chunks to retrieve per claim
-    min_similarity_threshold: 0.7  # Minimum semantic similarity to include evidence
-
   # Stance classification (LLM-based NLI)
   stance_classification:
     num_parallel_workers: 4  # Number of parallel workers for stance classification
