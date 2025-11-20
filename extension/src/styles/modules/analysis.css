@@ -125,8 +125,8 @@
 }
 
 .vn-evidence-item {
-  margin-bottom: 8px;
-  padding-bottom: 8px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
 
@@ -136,29 +136,77 @@
   padding-bottom: 0;
 }
 
-.vn-evidence-quote {
-  font-style: italic;
+/* Article header in evidence */
+.vn-evidence-article-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.vn-evidence-article-title {
   font-size: 12px;
-  line-height: 1.5;
-  color: #4b5563;
-  margin: 0 0 4px 0;
-  padding-left: 8px;
-  border-left: 2px solid rgba(0, 0, 0, 0.1);
+  font-weight: 600;
+  color: #1f2937;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.vn-evidence-article-title:hover {
+  color: #3b82f6;
+  text-decoration: underline;
 }
 
 .vn-evidence-source {
   display: block;
   font-size: 10px;
   color: #9ca3af;
-  margin-bottom: 4px;
-  text-align: right;
+  margin-bottom: 0;
 }
 
+/* Overall reasoning for the article */
 .vn-evidence-reasoning {
+  font-size: 12px;
+  line-height: 1.5;
+  color: #4b5563;
+  margin: 0 0 10px 0;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 4px;
+}
+
+/* Container for evidence spans (quotes) */
+.vn-evidence-spans {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.vn-evidence-span-item {
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 4px;
+  padding: 8px;
+}
+
+.vn-evidence-quote {
+  font-style: italic;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #374151;
+  margin: 0 0 6px 0;
+  padding-left: 10px;
+  border-left: 3px solid #d1d5db;
+  display: block;
+}
+
+.vn-span-reasoning {
   font-size: 11px;
   line-height: 1.4;
   color: #6b7280;
   margin: 0;
+  padding-left: 10px;
 }
 
 /* Sources Used */

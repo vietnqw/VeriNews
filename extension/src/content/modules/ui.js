@@ -371,16 +371,57 @@ function showContentPopup(content, apiResponse) {
             const evidenceItem = document.createElement("div");
             evidenceItem.className = "vn-evidence-item";
 
-            const evidenceQuote = document.createElement("p");
-            evidenceQuote.className = "vn-evidence-quote";
-            evidenceQuote.innerText = `"${evidence.key_quote}"`;
+            // Article header
+            const articleHeader = document.createElement("div");
+            articleHeader.className = "vn-evidence-article-header";
 
-            const evidenceSource = document.createElement("span");
-            evidenceSource.className = "vn-evidence-source";
-            evidenceSource.innerText = `— ${evidence.source_name}`;
+            const articleLink = document.createElement("a");
+            articleLink.href = evidence.article_url || "#";
+            articleLink.target = "_blank";
+            articleLink.className = "vn-evidence-article-title";
+            articleLink.innerText = evidence.article_title || "Bài báo";
 
-            evidenceItem.appendChild(evidenceQuote);
-            evidenceItem.appendChild(evidenceSource);
+            const articleMeta = document.createElement("span");
+            articleMeta.className = "vn-evidence-source";
+            articleMeta.innerText = `${evidence.source_name}${evidence.published_at ? ' - ' + new Date(evidence.published_at).toLocaleDateString('vi-VN') : ''}`;
+
+            articleHeader.appendChild(articleLink);
+            articleHeader.appendChild(articleMeta);
+            evidenceItem.appendChild(articleHeader);
+
+            // Overall reasoning
+            if (evidence.overall_reasoning) {
+              const reasoning = document.createElement("p");
+              reasoning.className = "vn-evidence-reasoning";
+              reasoning.innerText = evidence.overall_reasoning;
+              evidenceItem.appendChild(reasoning);
+            }
+
+            // Evidence spans (extracted quotes)
+            if (evidence.evidence_spans && evidence.evidence_spans.length > 0) {
+              const spansContainer = document.createElement("div");
+              spansContainer.className = "vn-evidence-spans";
+
+              evidence.evidence_spans.forEach((span, idx) => {
+                const spanItem = document.createElement("div");
+                spanItem.className = "vn-evidence-span-item";
+
+                const spanQuote = document.createElement("blockquote");
+                spanQuote.className = "vn-evidence-quote";
+                spanQuote.innerText = `"${span.text}"`;
+
+                const spanReasoning = document.createElement("p");
+                spanReasoning.className = "vn-span-reasoning";
+                spanReasoning.innerText = `→ ${span.reasoning}`;
+
+                spanItem.appendChild(spanQuote);
+                spanItem.appendChild(spanReasoning);
+                spansContainer.appendChild(spanItem);
+              });
+
+              evidenceItem.appendChild(spansContainer);
+            }
+
             supportingContainer.appendChild(evidenceItem);
           });
           claimItem.appendChild(supportingContainer);
@@ -397,16 +438,57 @@ function showContentPopup(content, apiResponse) {
             const evidenceItem = document.createElement("div");
             evidenceItem.className = "vn-evidence-item";
 
-            const evidenceQuote = document.createElement("p");
-            evidenceQuote.className = "vn-evidence-quote";
-            evidenceQuote.innerText = `"${evidence.key_quote}"`;
+            // Article header
+            const articleHeader = document.createElement("div");
+            articleHeader.className = "vn-evidence-article-header";
 
-            const evidenceSource = document.createElement("span");
-            evidenceSource.className = "vn-evidence-source";
-            evidenceSource.innerText = `— ${evidence.source_name}`;
+            const articleLink = document.createElement("a");
+            articleLink.href = evidence.article_url || "#";
+            articleLink.target = "_blank";
+            articleLink.className = "vn-evidence-article-title";
+            articleLink.innerText = evidence.article_title || "Bài báo";
 
-            evidenceItem.appendChild(evidenceQuote);
-            evidenceItem.appendChild(evidenceSource);
+            const articleMeta = document.createElement("span");
+            articleMeta.className = "vn-evidence-source";
+            articleMeta.innerText = `${evidence.source_name}${evidence.published_at ? ' - ' + new Date(evidence.published_at).toLocaleDateString('vi-VN') : ''}`;
+
+            articleHeader.appendChild(articleLink);
+            articleHeader.appendChild(articleMeta);
+            evidenceItem.appendChild(articleHeader);
+
+            // Overall reasoning
+            if (evidence.overall_reasoning) {
+              const reasoning = document.createElement("p");
+              reasoning.className = "vn-evidence-reasoning";
+              reasoning.innerText = evidence.overall_reasoning;
+              evidenceItem.appendChild(reasoning);
+            }
+
+            // Evidence spans (extracted quotes)
+            if (evidence.evidence_spans && evidence.evidence_spans.length > 0) {
+              const spansContainer = document.createElement("div");
+              spansContainer.className = "vn-evidence-spans";
+
+              evidence.evidence_spans.forEach((span, idx) => {
+                const spanItem = document.createElement("div");
+                spanItem.className = "vn-evidence-span-item";
+
+                const spanQuote = document.createElement("blockquote");
+                spanQuote.className = "vn-evidence-quote";
+                spanQuote.innerText = `"${span.text}"`;
+
+                const spanReasoning = document.createElement("p");
+                spanReasoning.className = "vn-span-reasoning";
+                spanReasoning.innerText = `→ ${span.reasoning}`;
+
+                spanItem.appendChild(spanQuote);
+                spanItem.appendChild(spanReasoning);
+                spansContainer.appendChild(spanItem);
+              });
+
+              evidenceItem.appendChild(spansContainer);
+            }
+
             refutingContainer.appendChild(evidenceItem);
           });
           claimItem.appendChild(refutingContainer);
