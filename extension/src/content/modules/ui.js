@@ -287,7 +287,7 @@ function showContentPopup(content, apiResponse) {
         const scoreItems = [
           { label: "Chất lượng bằng chứng", value: scores.evidence_quality, description: "Đo lường mức độ liên quan và độ mạnh của các bằng chứng tìm được. Điểm cao nghĩa là có trích dẫn trực tiếp hoặc dữ liệu cụ thể xác nhận nội dung." },
           { label: "Độ đồng thuận nguồn", value: scores.source_agreement, description: "Phản ánh mức độ thống nhất giữa các nguồn tin. Khi nhiều tờ báo uy tín cùng đưa tin giống nhau, độ tin cậy sẽ cao hơn." },
-          { label: "Độ phủ tuyên bố", value: scores.claim_coverage, description: "Cho biết bao nhiêu phần trăm các ý chính trong bài viết đã được hệ thống tìm thấy và kiểm chứng đối chiếu với nguồn tin uy tín." },
+          { label: "Độ phủ mệnh đề", value: scores.claim_coverage, description: "Cho biết bao nhiêu phần trăm các ý chính trong bài viết đã được hệ thống tìm thấy và kiểm chứng đối chiếu với nguồn tin uy tín." },
           { label: "Độ tin cậy phân loại", value: scores.stance_confidence, description: "Thể hiện độ chắc chắn của hệ thống AI khi xác định xem thông tin là đúng hay sai dựa trên ngữ cảnh và bằng chứng." },
           { label: "Độ mới của bài báo", value: scores.temporal_relevance, description: "Đánh giá tính thời sự của nguồn tin. Các bài báo mới nhất thường phản ánh thông tin chính xác hơn cho các sự kiện đang diễn ra." }
         ];
@@ -322,7 +322,7 @@ function showContentPopup(content, apiResponse) {
       }
     }
 
-    // --- 4. Điểm từng tuyên bố (Claim Verdicts) ---
+    // --- 4. Điểm từng mệnh đề (Claim Verdicts) ---
     if (apiResponse.claim_verdicts && apiResponse.claim_verdicts.length > 0) {
       const claimVerdictsList = document.createElement("div");
       claimVerdictsList.className = "vn-claim-verdicts-list";
