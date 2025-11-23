@@ -101,6 +101,13 @@ class BM25SearchService:
         # Tokenize the query for tsquery
         tokenized_query = await tokenize_for_search(query)
 
+        # Handle empty query case (no valid tokens after sanitization)
+        if not tokenized_query.strip():
+            logger.debug(
+                f"BM25 search query resulted in empty tokens: '{query[:50]}...'"
+            )
+            return []
+
         # Build the query using ts_rank_cd for BM25-like ranking
         # ts_rank_cd uses cover density ranking, similar to BM25
         stmt = (

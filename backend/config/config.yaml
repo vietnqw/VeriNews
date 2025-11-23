@@ -10,7 +10,7 @@ celery:
 
 # Scheduler Configuration
 scheduler:
-  crawler_interval_minutes: 15  # How often to run the news crawler and cleanup tasks
+  crawler_interval_minutes: 10  # How often to run the news crawler and cleanup tasks
 
 # Crawler Configuration
 crawler:
@@ -27,7 +27,7 @@ crawler:
 ai:
   provider: "openai"  # AI provider: openai, anthropic, local
   embedding_model: "text-embedding-3-small"  # Embedding model to use
-  llm_model: "gpt-4o-mini"  # LLM model to use (gpt-4o-mini, gpt-4o, claude-3-5-sonnet, etc.)
+  llm_model: "gpt-5.1"  # LLM model to use (gpt-4o-mini, gpt-4o, claude-3-5-sonnet, etc.)
   max_retries: 3  # Maximum retry attempts for API calls
   timeout_seconds: 30  # API request timeout
 

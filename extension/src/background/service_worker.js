@@ -18,7 +18,10 @@ async function performHealthCheck(config) {
   try {
     const res = await fetch(`${baseUrl}${healthEndpoint}`, {
       method: "GET",
-      headers: { "X-Secret-Key": apiKey },
+      headers: {
+        "X-Secret-Key": apiKey,
+        "ngrok-skip-browser-warning": "true",
+      },
       cache: "no-store",
       signal: getTimeoutSignal(timeoutMs || 5000),
     });

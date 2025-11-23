@@ -143,13 +143,17 @@ class OpenAILLMProvider(BaseLLMProvider):
                 {"role": msg.role, "content": msg.content} for msg in messages
             ]
 
-            response = await self.client.chat.completions.create(
-                model=model_name,
-                messages=openai_messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
+            # Build API call parameters, excluding max_tokens if None
+            api_params = {
+                "model": model_name,
+                "messages": openai_messages,
+                "temperature": temperature,
                 **kwargs,
-            )
+            }
+            if max_tokens is not None:
+                api_params["max_tokens"] = max_tokens
+
+            response = await self.client.chat.completions.create(**api_params)
 
             return LLMResponse(
                 content=response.choices[0].message.content or "",
@@ -182,14 +186,18 @@ class OpenAILLMProvider(BaseLLMProvider):
                 {"role": msg.role, "content": msg.content} for msg in messages
             ]
 
-            stream = await self.client.chat.completions.create(
-                model=model_name,
-                messages=openai_messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                stream=True,
+            # Build API call parameters, excluding max_tokens if None
+            api_params = {
+                "model": model_name,
+                "messages": openai_messages,
+                "temperature": temperature,
+                "stream": True,
                 **kwargs,
-            )
+            }
+            if max_tokens is not None:
+                api_params["max_tokens"] = max_tokens
+
+            stream = await self.client.chat.completions.create(**api_params)
 
             async for chunk in stream:
                 if chunk.choices[0].delta.content:
