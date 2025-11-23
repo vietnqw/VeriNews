@@ -91,9 +91,18 @@ class RetrievalCache:
         total_time_ms: int,
         stage_timings: Dict,
         query_count: int,
+        claims: List[str] | None = None,
+        factual_confidence: int | None = None,
+        retrieval_confidence: float | None = None,
+        confidence_metrics: Dict | None = None,
+        low_confidence_warning: bool = False,
+        early_exit: bool = False,
+        exit_reason: str | None = None,
+        message: str | None = None,
+        verification_result: Dict | None = None,
     ) -> None:
         """
-        Cache retrieval result.
+        Cache retrieval and verification result.
 
         Args:
             post_text: Original Facebook post text
@@ -101,6 +110,15 @@ class RetrievalCache:
             total_time_ms: Total pipeline time
             stage_timings: Timing breakdown
             query_count: Number of queries processed
+            claims: Extracted claims from post
+            factual_confidence: Confidence in post containing verifiable facts (1-3 scale)
+            retrieval_confidence: Confidence that articles are relevant (0-1 scale)
+            confidence_metrics: Detailed confidence breakdown dictionary
+            low_confidence_warning: Whether low confidence warning should be shown
+            early_exit: Whether pipeline exited early
+            exit_reason: Reason for early exit if applicable
+            message: Human-readable message explaining result
+            verification_result: Cached verification result as dictionary
         """
         if not self.enabled:
             return
@@ -115,6 +133,15 @@ class RetrievalCache:
                 "total_time_ms": total_time_ms,
                 "stage_timings": stage_timings,
                 "query_count": query_count,
+                "claims": claims or [],
+                "factual_confidence": factual_confidence,
+                "retrieval_confidence": retrieval_confidence,
+                "confidence_metrics": confidence_metrics,
+                "low_confidence_warning": low_confidence_warning,
+                "early_exit": early_exit,
+                "exit_reason": exit_reason,
+                "message": message,
+                "verification_result": verification_result,
             }
 
             # Store with TTL

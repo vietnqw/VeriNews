@@ -313,6 +313,9 @@ Return a JSON object with EXACTLY these keys:
 - Extract 1-{self.max_claims} claims maximum
 - Preserve ALL factual information from the post across all claims
 - Claims are simple strings - just the claim text
+- **CRITICAL**: You MUST extract at least 1 claim if the post contains verifiable info (quotes from officials/named persons, specific events, dates, numbers, or plans).
+  - Treat quotes from officials/named persons as verifiable claims.
+  - ONLY return empty "claims" [] if the post is PURE opinion/satire (factual_confidence = 1).
 
 **Segmentation Strategy - Split by TOPIC:**
 - Each claim focuses on ONE main subject (one entity, one event, one official statement, one specification)
@@ -475,6 +478,32 @@ Only "Bộ trưởng Bộ Lao động" is extracted because it's a well-known po
     "persons": ["Bộ trưởng Bộ Lao động"]
   }},
   "factual_confidence": 2
+}}
+
+**EXAMPLE 6 (Official Quote About Peace Plan - MUST Extract Claims):**
+**Post:** "Không, chưa phải đề nghị cuối cùng của tôi", Tổng thống Mỹ Donald Trump nói với báo giới ngày 22-11 (giờ Mỹ) trước Nhà Trắng, đề cập đến kế hoạch hòa bình gồm 28 điểm đang gây lo ngại lớn tại châu Âu, Ukraine và thế giới.
+
+**RATIONALE:**
+This post contains multiple specific, verifiable statements:
+- A direct quote from "Tổng thống Mỹ Donald Trump" (identifiable person) about whether his proposal is final.
+- Reference to a "kế hoạch hòa bình gồm 28 điểm" (concrete plan) and its impact on Europe, Ukraine, and the world.
+These are NOT pure opinions. They are factual claims that can be checked against news articles. Therefore:
+- factual_confidence MUST be 3 (High-Verifiable).
+- The "claims" array MUST NOT be empty. At least one claim must be extracted.
+
+**JSON:**
+{{
+  "clean_query": "Tổng thống Mỹ Donald Trump nói với báo giới ngày 22-11 trước Nhà Trắng rằng đề nghị hiện tại chưa phải đề nghị cuối cùng của ông đối với kế hoạch hòa bình 28 điểm đang gây lo ngại lớn tại châu Âu, Ukraine và thế giới.",
+  "claims": [
+    "Tổng thống Mỹ Donald Trump nói với báo giới ngày 22-11 trước Nhà Trắng rằng đề nghị hiện tại của ông về kế hoạch hòa bình 28 điểm chưa phải là đề nghị cuối cùng",
+    "Kế hoạch hòa bình 28 điểm của Tổng thống Mỹ Donald Trump đang gây lo ngại lớn tại châu Âu, Ukraine và thế giới"
+  ],
+  "entities": {{
+    "persons": ["Tổng thống Mỹ Donald Trump"],
+    "products_topics": ["kế hoạch hòa bình 28 điểm"],
+    "locations": ["châu Âu", "Ukraine"]
+  }},
+  "factual_confidence": 3
 }}
 
 **NOW PROCESS THIS POST:**
