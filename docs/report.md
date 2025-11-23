@@ -29,9 +29,9 @@ graph LR
 %%{init: {'theme':'base', 'themeVariables': { 'fontSize':'16px'}}}%%
 graph TD
     %% Browser Extension Layer
-    subgraph BrowserExt["<b>Tiện ích mở rộng (Extension)</b>"]
+    subgraph BrowserExt["<b>Browser Extension</b>"]
         direction TB
-        ContentScript["<b>Content script</b><br/><i>Trích xuất nội dung bài viết</i>"]
+        ContentScript["<b>Content script</b><br/><i>Trích xuất <br> nội dung bài đăng</i>"]
         ResultsPanel["<b>Bảng kết quả</b><br/><i>Hiển thị kết quả xác minh <br> & giải thích chi tiết</i>"]
     end
 
@@ -41,10 +41,10 @@ graph TD
 
         Orchestrator["<b>Bộ điều phối xác minh</b><br/>"]
 
-        subgraph Pipeline["<b>Chuỗi xử lý</b>"]
+        subgraph Pipeline["<b>Luồng kiểm chứng</b>"]
             direction LR
 
-            Retrieval["<b>Truy xuất</b><br/><div style='text-align:left'>• Tách luận điểm<br/>• Tìm kiếm kết hợp <br>  (Vector, BM25)<br/>• Xếp hạng bài báo theo mức độ liên quan</div>"]
+            Retrieval["<b>Truy xuất</b><br/><div style='text-align:left'>• Làm sạch nội dung<br/>• Tách luận điểm & thực thể<br/>• Tìm kiếm kết hợp <br>  (Vector, BM25)<br/>• Xếp hạng bài báo theo mức độ liên quan</div>"]
             Verification["<b>Xác minh</b><br/><div style='text-align:left'>• Phân tích lập trường (NLI)<br/>• Giải thích chi tiết<br/>• Tổng hợp kết quả</div>"]
 
             Retrieval ==> Verification
@@ -108,6 +108,140 @@ graph TD
     class ContentScript,ResultsPanel,Crawl,Process,Cache,Database nodeStyle
     class Retrieval,Verification nodeStyle
     class Orchestrator orchestratorStyle
+```
+
+### Verification pipeline (Luồng kiểm chứng thông tin)
+
+```mermaid
+---
+config:
+  theme: base
+  themeVariables:
+    fontSize: 16px
+    fontFamily: Arial
+  layout: dagre
+---
+flowchart LR
+    Claims["🧩 <b>Luận điểm</b><br><i>Đã trích xuất từ bài đăng</i>"]
+    Evidence["📚 <b>Bài báo liên quan</b><br><i>Kết quả từ retrieval pipeline</i>"]
+    Pair["🔗 <b>Ghép (luận điểm, đoạn báo)</b><br><i>Chọn các đoạn phù hợp nhất</i>"]
+    NLI["🧠 <b>Phân tích lập trường</b><br><i>SUPPORTS / REFUTES / NOT_ENOUGH_INFO + confidence</i>"]
+    ClaimAgg["⚖️ <b>Gộp kết quả theo luận điểm</b><br><i>Kết luận + độ tin cậy từng luận điểm</i>"]
+    PostAgg["📊 <b>Kết luận toàn bài đăng</b><br><i>FULLY_SUPPORTED / PARTIALLY_SUPPORTED / REFUTED / NOT_ENOUGH_INFO</i>"]
+
+    Signals["🌡️ <b>Các tín hiệu tin cậy</b><br><i>C, S, K, T trên thang 0–1</i>"]
+    EvidenceQ["📈 <b>Chất lượng bằng chứng (C)</b><br><i>Trung bình confidence</i>"]
+    SourceAgree["🤝 <b>Đồng thuận nguồn tin (S)</b><br><i>Tỷ lệ nhãn đa số</i>"]
+    Coverage["🧮 <b>Độ bao phủ luận điểm (K)</b><br><i>% luận điểm được ủng hộ</i>"]
+    TimeRel["⏱️ <b>Độ mới thời gian (T)</b><br><i>Tuổi bài báo</i>"]
+    Score["⭐ <b>Điểm tin cậy tổng</b><br><i>overall_confidence 0–1</i>"]
+    Bucket["🎨 <b>Mức hiển thị cho người dùng</b><br><i>HIGH / MEDIUM / LOW / NONE</i>"]
+
+    Claims & Evidence --> Pair --> NLI --> ClaimAgg --> PostAgg
+    ClaimAgg --> Signals
+    Signals --> EvidenceQ & SourceAgree & Coverage & TimeRel
+    EvidenceQ & SourceAgree & Coverage & TimeRel --> Score --> Bucket
+
+    classDef stepStyle fill:#e3f2fd,stroke:#1976d2,stroke-width:3px,color:#0d47a1,rx:10,ry:10
+    classDef dataStyle fill:#fff3e0,stroke:#f57c00,stroke-width:3px,color:#e65100,rx:10,ry:10
+
+    class Claims,Evidence,Signals,Bucket dataStyle
+    class Pair,NLI,ClaimAgg,PostAgg,EvidenceQ,SourceAgree,Coverage,TimeRel,Score stepStyle
+```
+
+### Retrieval pipeline (Luồng truy xuất thông tin)
+
+```mermaid
+---
+config:
+  theme: base
+  themeVariables:
+    fontSize: 16px
+    fontFamily: Arial
+  layout: dagre
+---
+flowchart LR
+    Input["📝 <b>Văn bản bài đăng</b><br>(đã được Orchestrator chuẩn hóa)"] --> Claims["🧩 <b>Trích xuất luận điểm</b><br><i>Lấy luận điểm, từ khóa, thực thể</i>"]
+    Claims --> Embedding["🔢 <b>Sinh embedding</b><br><i>Vector ngữ nghĩa bằng OpenAI</i>"] & BM25Search["🔎 <b>Full-text search (BM25)</b><br><i>PostgreSQL FTS – từ khóa quan trọng</i>"]
+    Embedding --> VectorSearch["📐 <b>Vector search</b><br><i>pgvector – đo độ tương đồng ngữ nghĩa</i>"]
+    VectorSearch --> Fusion["⚖️ <b>Hợp nhất &amp; xếp hạng</b><br><i>Kết hợp điểm vector + BM25</i>"]
+    BM25Search --> Fusion
+    Fusion --> Output["📚 <b>Danh sách bài báo</b><br><i>Kèm điểm liên quan</i>"]
+
+     Input:::dataStyle
+     Claims:::stepStyle
+     Embedding:::stepStyle
+     BM25Search:::stepStyle
+     VectorSearch:::stepStyle
+     Fusion:::stepStyle
+     Output:::dataStyle
+    classDef stepStyle fill:#e3f2fd,stroke:#1976d2,stroke-width:3px,color:#0d47a1,rx:10,ry:10
+    classDef dataStyle fill:#fff3e0,stroke:#f57c00,stroke-width:3px,color:#e65100,rx:10,ry:10
+```
+
+### Data ingestion pipeline (Luồng nạp dữ liệu)
+
+```mermaid
+---
+config:
+  theme: base
+  themeVariables:
+    fontSize: 16px
+    fontFamily: Arial
+  layout: dagre
+---
+flowchart LR
+    Sources["📰 <b>Nguồn tin uy tín</b><br><i>Hơn 100 RSS feed</i>"]
+    Fetch["📡 <b>Thu RSS định kỳ</b><br><i>Celery Beat scheduler</i>"]
+    Extract["🧾 <b>Trích xuất nội dung</b><br><i>Lọc HTML, bỏ nhiễu</i>"]
+    Chunk["✂️ <b>Chia đoạn văn bản</b><br><i>Chunk 500–2000 ký tự</i>"]
+    Embed["🔢 <b>Sinh embedding</b><br><i>Vector ngữ nghĩa bằng OpenAI</i>"]
+    Store["💾 <b>Lưu &amp; lập chỉ mục</b><br><i>PostgreSQL + pgvector + FTS</i>"]
+    Cleanup["🗑️ <b>Dọn dẹp bài cũ</b><br><i>Xóa bản ghi &gt; 24 giờ</i>"]
+    Knowledge["📚 <b>Kho dữ liệu phục vụ truy xuất</b><br><i>Retrieval pipeline sử dụng</i>"]
+
+    Sources --> Fetch --> Extract --> Chunk --> Embed --> Store --> Cleanup
+    Store --> Knowledge
+
+    classDef stepStyle fill:#e3f2fd,stroke:#1976d2,stroke-width:3px,color:#0d47a1,rx:10,ry:10
+    classDef dataStyle fill:#fff3e0,stroke:#f57c00,stroke-width:3px,color:#e65100,rx:10,ry:10
+
+    class Sources,Knowledge dataStyle
+    class Fetch,Extract,Chunk,Embed,Store,Cleanup stepStyle
+```
+
+### Caching pipeline (Luồng cache tối ưu thời gian phản hồi)
+
+```mermaid
+---
+config:
+  theme: base
+  themeVariables:
+    fontSize: 16px
+    fontFamily: Arial
+  layout: dagre
+---
+flowchart LR
+    Post["📝 <b>Bài đăng cần kiểm chứng</b><br><i>Nội dung văn bản đầy đủ</i>"]
+    Hash["🔐 <b>Tính mã băm nội dung</b><br><i>SHA-256(post_text)</i>"]
+    Check["📦 <b>Kiểm tra cache</b><br><i>Redis: key = hash</i>"]
+
+    Hit["⚡ <b>Cache hit</b><br><i>Đã có kết quả trước đó</i>"]
+    Miss["🐢 <b>Cache miss</b><br><i>Chưa từng xử lý nội dung này</i>"]
+
+    Pipelines["🧠 <b>Chạy đầy đủ pipeline</b><br><i>Truy vấn + Xác minh</i>"]
+    Save["💾 <b>Lưu kết quả vào Redis</b><br><i>TTL ≈ 24 giờ</i>"]
+    Result["📱 <b>Trả kết quả cho người dùng</b><br><i>Kết luận + điểm tin cậy + giải thích</i>"]
+
+    Post --> Hash --> Check
+    Check -->|Có trong cache| Hit --> Result
+    Check -->|Không có| Miss --> Pipelines --> Save --> Result
+
+    classDef stepStyle fill:#e3f2fd,stroke:#1976d2,stroke-width:3px,color:#0d47a1,rx:10,ry:10
+    classDef dataStyle fill:#fff3e0,stroke:#f57c00,stroke-width:3px,color:#e65100,rx:10,ry:10
+
+    class Post,Result dataStyle
+    class Hash,Check,Hit,Miss,Pipelines,Save stepStyle
 ```
 
 ### 6. Tổng quan hệ thống
