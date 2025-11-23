@@ -46,7 +46,7 @@ class RetrievalOrchestrator:
     Returns article-level results with timing breakdowns and confidence metrics.
     """
 
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession, on_stage_complete=None):
         self.session = session
         self.query_service = QueryExtractionService()
         self.hybrid_service = HybridRetrievalService(session)
@@ -55,6 +55,14 @@ class RetrievalOrchestrator:
         self.aggregation_service = ArticleAggregationService(db=session)
         self.article_reranker_service = ArticleRerankerService()
         self.confidence_service = ConfidenceScoringService()
+        self.on_stage_complete = (
+            on_stage_complete  # Callback for stage completion events
+        )
+
+    async def _emit_stage(self, stage_name: str):
+        """Emit a stage completion event if callback is registered."""
+        if self.on_stage_complete:
+            await self.on_stage_complete(stage_name)
 
     async def retrieve(self, post_text: str) -> Dict:
         """
@@ -144,6 +152,9 @@ class RetrievalOrchestrator:
             f"Batch embedding: {len(query_texts)} queries ({timings['embedding']:.2f}ms)"
         )
 
+        # Emit: Stage 1 complete (Query Extraction)
+        await self._emit_stage("query_extraction")
+
         # Stage 3: Multi-Query Hybrid Search
         t3 = time.time()
         all_result_lists = await self.hybrid_service.search_multi_query(
@@ -199,6 +210,9 @@ class RetrievalOrchestrator:
             logger.info(f"Article reranking: {len(articles)} articles passed threshold")
 
         timings["article_reranking"] = (time.time() - t7) * 1000
+
+        # Emit: Stage 2 complete (Search & Retrieval)
+        await self._emit_stage("search")
 
         # Stage 8: Confidence scoring
         t8 = time.time()

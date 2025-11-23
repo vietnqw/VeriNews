@@ -1,0 +1,307 @@
+/**
+ * Progress UI styles for VeriNews verification
+ * Modern animations and stage visualization
+ */
+
+/* CSS Variables for theming */
+:root {
+  --progress-primary: #3b82f6;
+  --progress-primary-light: #60a5fa;
+  --progress-success: #10b981;
+  --progress-text: #1f2937;
+  --progress-text-light: #6b7280;
+  --progress-bg: #ffffff;
+  --progress-border: #e5e7eb;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --progress-primary: #60a5fa;
+    --progress-primary-light: #93c5fd;
+    --progress-success: #34d399;
+    --progress-text: #f3f4f6;
+    --progress-text-light: #d1d5db;
+    --progress-bg: #1f2937;
+    --progress-border: #374151;
+  }
+}
+
+/* Enhanced Loading Container */
+.vn-progress-loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 24px 30px 24px; /* Reduced bottom padding */
+  gap: 32px; /* Reduced gap */
+  background: var(--progress-bg);
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 220px; /* Reduced min-height */
+}
+
+/* Progress Bar Wrapper */
+.vn-progress-bar-wrapper {
+  width: 100%;
+  max-width: 500px;
+  padding: 0 24px;
+  box-sizing: border-box;
+}
+
+/* Progress Bar Container */
+.vn-progress-bar-container {
+  position: relative;
+  width: 100%;
+  height: 8px; /* Thicker bar */
+  margin-bottom: 24px; /* Space for labels */
+  background: var(--progress-border);
+  border-radius: 4px; /* Adjusted radius for thicker bar */
+}
+
+/* Bar Background */
+.vn-progress-bar-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--progress-border);
+  border-radius: 4px;
+}
+
+/* Bar Fill */
+.vn-progress-bar-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: var(--progress-primary);
+  border-radius: 4px;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1;
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
+  overflow: hidden;
+}
+
+/* Shimmer Effect */
+.vn-progress-bar-fill::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.4) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: skewX(-20deg) translateX(-150%);
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: skewX(-20deg) translateX(-150%);
+  }
+  100% {
+    transform: skewX(-20deg) translateX(150%);
+  }
+}
+
+/* Checkpoints */
+.vn-progress-checkpoint {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Dots */
+.vn-progress-dot {
+  width: 16px; /* Larger dots */
+  height: 16px;
+  border-radius: 50%;
+  background: var(--progress-bg); /* Inner circle */
+  border: 3px solid var(--progress-border); /* Thicker border */
+  transition: all 0.3s ease;
+  box-shadow: 0 0 0 3px var(--progress-bg); /* White ring spacing */
+  position: relative;
+}
+
+/* Pulse Ring Animation for Active Dot */
+.vn-progress-checkpoint.active .vn-progress-dot::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  background: var(--progress-primary);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0.6;
+  animation: pulseRing 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+  z-index: -1;
+  will-change: transform, opacity;
+}
+
+@keyframes pulseRing {
+  0% {
+    transform: translate(-50%, -50%) scale(0.8);
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 0.3;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2.5);
+    opacity: 0;
+  }
+}
+
+.vn-progress-checkpoint.active .vn-progress-dot {
+  background: var(--progress-primary);
+  border-color: var(--progress-primary);
+  transform: scale(1.2); /* Slightly reduced scale as dots are bigger */
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+}
+
+.vn-progress-checkpoint.completed .vn-progress-dot {
+  background: var(--progress-primary);
+  border-color: var(--progress-primary);
+  transform: scale(1);
+}
+
+/* Labels */
+.vn-progress-checkpoint-label {
+  position: absolute;
+  top: 24px; /* Adjusted for larger dots */
+  white-space: nowrap;
+  font-size: 13px; /* Slightly larger font */
+  color: var(--progress-text-light);
+  font-weight: 500;
+  transition: color 0.3s ease, font-weight 0.3s ease;
+}
+
+.vn-progress-checkpoint.active .vn-progress-checkpoint-label,
+.vn-progress-checkpoint.completed .vn-progress-checkpoint-label {
+  color: var(--progress-primary);
+  font-weight: 600;
+}
+
+/* Stage Name (Full) */
+.vn-progress-stage-name {
+  font-size: 18px;
+  font-weight: 700; /* Bolder */
+  text-align: center;
+  margin: 0;
+  min-height: 28px;
+  max-width: 90%;
+  line-height: 1.6;
+  position: relative;
+  padding-right: 20px;
+
+  /* Gradient Text */
+  background: linear-gradient(135deg, var(--progress-primary) 0%, var(--progress-primary-light) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: var(--progress-primary); /* Fallback */
+
+  /* Initial state for animation */
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.vn-progress-stage-name.animate-in {
+  animation: textSlideBlurIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes textSlideBlurIn {
+  0% {
+    opacity: 0;
+    transform: translateY(15px) scale(0.98);
+    filter: blur(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+/* Animated Ellipsis */
+.vn-progress-stage-name::after {
+  content: '...';
+  display: inline-block;
+  position: absolute;
+  width: 20px;
+  text-align: left;
+  animation: ellipsis 1.5s infinite;
+
+  /* Ensure ellipsis gets the gradient too if possible, or just match color */
+  -webkit-text-fill-color: var(--progress-primary);
+}
+
+
+/* Loading state for standard spinner (fallback) */
+.vn-loading-spinner-wrapper {
+  width: 64px;
+  height: 64px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vn-loading-spinner-track {
+  position: absolute;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 3px solid var(--progress-border);
+  top: 0;
+  left: 0;
+}
+
+.vn-loading-spinner-indicator {
+  position: absolute;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  border-top-color: var(--progress-primary);
+  border-right-color: var(--progress-primary);
+  top: 0;
+  left: 0;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    .vn-progress-loading-container {
+        padding: 32px 16px;
+    }
+
+    .vn-progress-bar-wrapper {
+        padding: 0 10px;
+    }
+
+    .vn-progress-checkpoint-label {
+        font-size: 10px;
+    }
+
+    .vn-progress-stage-name {
+        font-size: 14px;
+    }
+}

@@ -1,9 +1,157 @@
 /**
+ * Creates the enhanced progress loading UI with stages
+ * @param {object} progressTracker - Progress tracker instance
+ * @param {Function} onComplete - Callback when streaming completes
+ * @returns {HTMLElement} Progress container element
+ */
+function createProgressLoadingUI(progressTracker, onComplete) {
+  const progressContainer = document.createElement("div");
+  progressContainer.className = "vn-progress-loading-container";
+
+  // Stages definition
+  const stages = [
+    { key: "query_extraction", short: "Trích xuất", name: "Làm sạch và trích xuất luận điểm chính" },
+    { key: "search", short: "Tìm kiếm", name: "Tìm kiếm các bài báo liên quan" },
+    { key: "evaluation", short: "Đánh giá", name: "Phân tích, so sánh bài đăng với bài báo liên quan" },
+    { key: "synthesis", short: "Tổng hợp", name: "Hoàn thiện kết quả đánh giá" },
+  ];
+
+  // Progress Bar Wrapper
+  const barWrapper = document.createElement("div");
+  barWrapper.className = "vn-progress-bar-wrapper";
+
+  const barContainer = document.createElement("div");
+  barContainer.className = "vn-progress-bar-container";
+
+  const barBackground = document.createElement("div");
+  barBackground.className = "vn-progress-bar-background";
+
+  const barFill = document.createElement("div");
+  barFill.className = "vn-progress-bar-fill";
+  // Initialize width to 0
+  barFill.style.width = "0%";
+
+  barContainer.appendChild(barBackground);
+  barContainer.appendChild(barFill);
+
+  // Create Checkpoints
+  const checkpoints = [];
+  stages.forEach((stage, index) => {
+    const checkpoint = document.createElement("div");
+    checkpoint.className = "vn-progress-checkpoint";
+    // Calculate position: distribute evenly 0% to 100%
+    const leftPos = (index / (stages.length - 1)) * 100;
+    checkpoint.style.left = `${leftPos}%`;
+
+    const dot = document.createElement("div");
+    dot.className = "vn-progress-dot";
+
+    const label = document.createElement("div");
+    label.className = "vn-progress-checkpoint-label";
+    label.innerText = stage.short;
+
+    checkpoint.appendChild(dot);
+    checkpoint.appendChild(label);
+    barContainer.appendChild(checkpoint);
+
+    checkpoints.push({ key: stage.key, element: checkpoint, pos: leftPos });
+  });
+
+  barWrapper.appendChild(barContainer);
+
+  // Stage Name Display (Full Name)
+  const stageNameDisplay = document.createElement("h2");
+  stageNameDisplay.className = "vn-progress-stage-name animate-in"; // Add initial animation
+  stageNameDisplay.innerText = stages[0].name; // Initial text
+
+  progressContainer.appendChild(barWrapper);
+  progressContainer.appendChild(stageNameDisplay);
+
+  // Set up callbacks
+  progressTracker.onStageUpdate = (event) => {
+    const { stage, stage_name, status } = event;
+
+    const index = stages.findIndex(s => s.key === stage);
+
+    if (index !== -1) {
+      // Update stage text with animation reset
+      if (stageNameDisplay.innerText !== stages[index].name) {
+        stageNameDisplay.classList.remove("animate-in");
+        void stageNameDisplay.offsetWidth; // Trigger reflow to restart animation
+        stageNameDisplay.innerText = stages[index].name;
+        stageNameDisplay.classList.add("animate-in");
+      }
+
+      // Update bar width
+      // If status is 'in_progress', we are AT this checkpoint.
+      // If 'completed', we might be moving past it, but usually the next stage 'in_progress' handles that.
+
+      const percent = (index / (stages.length - 1)) * 100;
+      barFill.style.width = `${percent}%`;
+
+      // Update checkpoints
+      checkpoints.forEach((cp, i) => {
+        cp.element.classList.remove("active", "completed", "pending");
+        if (i < index) {
+          cp.element.classList.add("completed");
+        } else if (i === index) {
+          if (status === "completed") {
+             cp.element.classList.add("completed");
+          } else {
+             cp.element.classList.add("active");
+          }
+        } else {
+          cp.element.classList.add("pending");
+        }
+      });
+    }
+  };
+
+  // We ignore onProgressUpdate as requested (no percentages)
+  progressTracker.onProgressUpdate = (progress) => {
+     // Optional: Smooth interpolation between checkpoints could go here if we wanted
+     // but for now we stick to the checkpoints.
+  };
+
+  progressTracker.onComplete = (response) => {
+    // Fill bar to 100% on complete
+    barFill.style.width = "100%";
+    checkpoints.forEach(cp => {
+        cp.element.classList.remove("active", "pending");
+        cp.element.classList.add("completed");
+    });
+
+    // Small delay before removing to show completion state
+    setTimeout(() => {
+        if (progressContainer.parentElement) {
+          progressContainer.remove();
+        }
+        if (onComplete) {
+          onComplete(response);
+        }
+    }, 500);
+  };
+
+  progressTracker.onError = (error) => {
+    progressContainer.innerHTML = `
+      <div style="text-align: center; padding: 24px;">
+        <h3 style="color: #ef4444; margin-bottom: 8px;">Xác minh thất bại</h3>
+        <p style="color: #666; font-size: 14px;">${error.message}</p>
+      </div>
+    `;
+  };
+
+  return progressContainer;
+}
+
+/**
  * Displays a modal popup with the extracted content.
  * @param {string} content - The text content to display.
  * @param {object | null} apiResponse - The response from the API, or null for loading state.
+ * @param {object | null} progressTracker - Optional progress tracker for SSE updates.
+ * @param {Function | null} onComplete - Callback when progress completes (for streaming mode).
  */
-function showContentPopup(content, apiResponse) {
+function showContentPopup(content, apiResponse, progressTracker = null, onComplete = null) {
   // --- Create Popup Elements ---
   const overlay = document.createElement("div");
   overlay.className = "vn-modal-overlay";
@@ -95,34 +243,41 @@ function showContentPopup(content, apiResponse) {
   }
 
   if (!apiResponse) {
-    // Loading state
-    const loadingContainer = document.createElement("div");
-    loadingContainer.className = "vn-loading-container";
+    // Loading state with progress tracking
+    if (progressTracker) {
+      // Use enhanced progress UI with stages
+      const progressContainer = createProgressLoadingUI(progressTracker, onComplete);
+      modal.appendChild(progressContainer);
+    } else {
+      // Fallback to simple spinner
+      const loadingContainer = document.createElement("div");
+      loadingContainer.className = "vn-loading-container";
 
-    const spinnerWrapper = document.createElement("div");
-    spinnerWrapper.className = "vn-loading-spinner-wrapper";
+      const spinnerWrapper = document.createElement("div");
+      spinnerWrapper.className = "vn-loading-spinner-wrapper";
 
-    const spinnerTrack = document.createElement("div");
-    spinnerTrack.className = "vn-loading-spinner-track";
+      const spinnerTrack = document.createElement("div");
+      spinnerTrack.className = "vn-loading-spinner-track";
 
-    const spinnerIndicator = document.createElement("div");
-    spinnerIndicator.className = "vn-loading-spinner-indicator";
+      const spinnerIndicator = document.createElement("div");
+      spinnerIndicator.className = "vn-loading-spinner-indicator";
 
-    spinnerWrapper.appendChild(spinnerTrack);
-    spinnerWrapper.appendChild(spinnerIndicator);
+      spinnerWrapper.appendChild(spinnerTrack);
+      spinnerWrapper.appendChild(spinnerIndicator);
 
-    const loadingTitle = document.createElement("h1");
-    loadingTitle.className = "vn-loading-title";
-    loadingTitle.innerText = "Đang xác minh nội dung...";
+      const loadingTitle = document.createElement("h1");
+      loadingTitle.className = "vn-loading-title";
+      loadingTitle.innerText = "Đang xác minh nội dung...";
 
-    const loadingDescription = document.createElement("p");
-    loadingDescription.className = "vn-loading-description";
-    loadingDescription.innerText = "Vui lòng chờ trong giây lát. Quá trình này có thể mất một chút thời gian.";
+      const loadingDescription = document.createElement("p");
+      loadingDescription.className = "vn-loading-description";
+      loadingDescription.innerText = "Vui lòng chờ trong giây lát. Quá trình này có thể mất một chút thời gian.";
 
-    loadingContainer.appendChild(spinnerWrapper);
-    loadingContainer.appendChild(loadingTitle);
-    loadingContainer.appendChild(loadingDescription);
-    modal.appendChild(loadingContainer);
+      loadingContainer.appendChild(spinnerWrapper);
+      loadingContainer.appendChild(loadingTitle);
+      loadingContainer.appendChild(loadingDescription);
+      modal.appendChild(loadingContainer);
+    }
   } else if (apiResponse.error) {
     // --- Error State ---
     const errorContainer = document.createElement("div");
@@ -530,6 +685,8 @@ function showContentPopup(content, apiResponse) {
       contextContainer.appendChild(contextReasoning);
       modal.appendChild(contextContainer);
     }
+
+    // AI Disclaimer removed from here, moved to footer
   }
 
   // --- Footer ---
@@ -537,11 +694,21 @@ function showContentPopup(content, apiResponse) {
     const footer = document.createElement("div");
     footer.className = "vn-modal-footer";
 
+    const footerLeft = document.createElement("div");
+    footerLeft.className = "vn-footer-left";
+
     const footerInfo = document.createElement("div");
     footerInfo.className = "vn-footer-info";
     const timeSec = (apiResponse._veriNewsMetadata.total_time_ms / 1000).toFixed(2);
     footerInfo.innerHTML = `<strong>Thời gian:</strong> ${timeSec} giây`;
-    footer.appendChild(footerInfo);
+
+    const footerDisclaimer = document.createElement("div");
+    footerDisclaimer.className = "vn-footer-disclaimer";
+    footerDisclaimer.innerText = "✨ Kết quả phân tích bởi AI chỉ mang tính tham khảo";
+
+    footerLeft.appendChild(footerInfo);
+    footerLeft.appendChild(footerDisclaimer);
+    footer.appendChild(footerLeft);
 
     const refreshButton = document.createElement("button");
     refreshButton.className = "vn-refresh-button";
@@ -551,9 +718,32 @@ function showContentPopup(content, apiResponse) {
       refreshButton.disabled = true;
       refreshButton.innerText = "Đang xác minh...";
       try {
-        const newApiResponse = await callVerifyAPI(content, true);
+        // Create progress tracker for streaming
+        const progressTracker = createProgressTracker(
+          (event) => console.log("Stage update:", event),
+          (progress) => console.log("Progress:", progress),
+          null, // onComplete will be handled by createProgressLoadingUI
+          (error) => {
+            document.querySelector(".vn-modal-overlay")?.remove();
+            console.error("Verification error:", error);
+            refreshButton.disabled = false;
+            refreshButton.innerText = "Thất bại - Thử lại";
+          }
+        );
+
+        // Show progress UI with completion handler
         document.querySelector(".vn-modal-overlay")?.remove();
-        showContentPopup(content, newApiResponse);
+        showContentPopup(content, null, progressTracker, (response) => {
+          // Results received, remove progress modal and show results
+          document.querySelector(".vn-modal-overlay")?.remove();
+          document.querySelector(".vn-modal-content")?.remove();
+          showContentPopup(content, response);
+          refreshButton.disabled = false;
+          refreshButton.innerText = "Xác minh lại";
+        });
+
+        // Start streaming verification
+        progressTracker.startStreaming(content, true);
       } catch (error) {
         console.error(error);
         refreshButton.disabled = false;
@@ -602,11 +792,33 @@ async function createOverlay(target, type) {
     button.disabled = true;
     showContentPopup("Đang trích xuất nội dung...", null);
     const extracted = await extractText(target, type);
-    const apiResponse = await callVerifyAPI(extracted);
+
+    // Create progress tracker for streaming verification
+    const progressTracker = createProgressTracker(
+      (event) => console.log("Stage update:", event),
+      (progress) => console.log("Progress:", progress),
+      null, // onComplete will be handled by createProgressLoadingUI
+      (error) => {
+        document.querySelector(".vn-modal-overlay")?.remove();
+        console.error("Verification error:", error);
+        buttonImg.alt = "Xác minh";
+        button.disabled = false;
+      }
+    );
+
+    // Show progress UI with completion handler
     document.querySelector(".vn-modal-overlay")?.remove();
-    showContentPopup(extracted, apiResponse);
-    buttonImg.alt = "Xác minh";
-    button.disabled = false;
+    showContentPopup(extracted, null, progressTracker, (response) => {
+      // Results received, remove progress modal and show results
+      document.querySelector(".vn-modal-overlay")?.remove();
+      document.querySelector(".vn-modal-content")?.remove();
+      showContentPopup(extracted, response);
+      buttonImg.alt = "Xác minh";
+      button.disabled = false;
+    });
+
+    // Start streaming verification
+    progressTracker.startStreaming(extracted, false);
   });
 
   const overlay = document.createElement("div");

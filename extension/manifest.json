@@ -25,6 +25,7 @@
         "src/content/modules/constants.js",
         "src/content/modules/utils.js",
         "src/content/modules/api.js",
+        "src/content/modules/progress.js",
         "src/content/modules/extractor.js",
         "src/content/modules/ui.js",
         "src/content/modules/observer.js",
@@ -38,7 +39,8 @@
         "src/styles/modules/verification.css",
         "src/styles/modules/articles.css",
         "src/styles/modules/analysis.css",
-        "src/styles/modules/footer.css"
+        "src/styles/modules/footer.css",
+        "src/styles/modules/progress.css"
       ]
     }
   ],

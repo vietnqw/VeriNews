@@ -124,6 +124,98 @@ function adaptVeriNewsResponse(veriNewsData) {
 }
 
 /**
+ * Calls VeriNews verification API with progress tracking (SSE streaming)
+ * @param {string} content - The text content to verify
+ * @param {boolean} cacheBypass - If true, bypass cache and force re-verification
+ * @param {Function} onStageUpdate - Callback for stage updates
+ * @param {Function} onProgressUpdate - Callback for progress updates
+ * @param {Function} onError - Callback for errors
+ * @returns {Promise<Object>} Verification result in MVP format
+ */
+async function callVerifyAPIWithProgress(
+  content,
+  cacheBypass = false,
+  onStageUpdate,
+  onProgressUpdate,
+  onError
+) {
+  try {
+    const response = await fetch(`${CONFIG.BACKEND_BASE_URL}/api/v1/verify?stream=true`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        text: content,
+        cache_bypass: cacheBypass,
+      }),
+    });
+
+    if (!response.ok) {
+      let errorDetails = "Không thể truy xuất chi tiết lỗi.";
+      try {
+        const errorData = await response.json();
+        if (errorData.detail) {
+          errorDetails = errorData.detail;
+        }
+      } catch (e) {
+        // response body is not json or empty
+      }
+      onError?.({
+        message: `Yêu cầu API thất bại với mã trạng thái ${response.status}. ${errorDetails}`,
+      });
+      return { error: true, message: "API request failed" };
+    }
+
+    // Handle SSE stream
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let finalResult = null;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+
+      // Process complete SSE messages
+      const lines = buffer.split("\n");
+      buffer = lines.pop(); // Keep incomplete line in buffer
+
+      for (const line of lines) {
+        if (line.startsWith("data: ")) {
+          try {
+            const eventData = JSON.parse(line.slice(6));
+            if (eventData.type === "stage_update") {
+              onStageUpdate?.(eventData);
+              onProgressUpdate?.(eventData);
+            } else if (eventData.type === "result") {
+              finalResult = adaptVeriNewsResponse(eventData.data);
+            } else if (eventData.type === "error") {
+              onError?.({ message: eventData.message });
+            }
+          } catch (e) {
+            console.error("Failed to parse SSE event:", line, e);
+          }
+        }
+      }
+    }
+
+    return finalResult || { error: true, message: "No response received" };
+  } catch (error) {
+    console.error("Error calling VeriNews API with progress:", error);
+    let message = "Đã xảy ra lỗi không xác định.";
+    if (error instanceof TypeError && error.message.includes("Failed to fetch")) {
+      message =
+        "Không thể kết nối đến máy chủ VeriNews. Vui lòng kiểm tra kết nối internet của bạn hoặc thử lại sau.";
+    }
+    onError?.({ message });
+    return { error: true, message };
+  }
+}
+
+/**
  * Calls VeriNews verification API
  * @param {string} content - The text content to verify
  * @param {boolean} cacheBypass - If true, bypass cache and force re-verification

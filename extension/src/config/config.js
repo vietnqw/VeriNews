@@ -3,7 +3,7 @@ const CONFIG = {
   // Backend API configuration
   // Default: localhost for development
   // Change this to your production URL when deploying
-  BACKEND_BASE_URL: "http://localhost:8000",
+  BACKEND_BASE_URL: "https://prediscountable-rustily-emmalee.ngrok-free.dev",
   HEALTH_ENDPOINT: "/api/v1/health",
 
   // Connection timeout in milliseconds

@@ -2,10 +2,16 @@
 .vn-modal-footer {
   background: #f9fafb;
   border-top: 1px solid #e5e7eb;
-  padding: 20px 32px;
+  padding: 16px 32px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.vn-footer-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .vn-footer-info {
@@ -15,4 +21,11 @@
 
 .vn-footer-info strong {
   font-weight: 500;
+}
+
+/* AI Disclaimer (in footer) */
+.vn-footer-disclaimer {
+  font-size: 11px;
+  color: #9ca3af;
+  font-style: italic;
 }
