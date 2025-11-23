@@ -24,28 +24,40 @@
   width: 95%;
   max-height: 85vh;
   overflow-y: auto;
+  overflow-x: hidden;
   position: relative;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   animation: slideInUp 0.4s ease-out;
   font-family: inherit;
+  /* Reserve space for scrollbar to keep it inside rounded corners */
+  scrollbar-gutter: stable;
+  padding-right: 2px;
 }
 
-/* Custom scrollbar for modal */
+/* Custom scrollbar for modal - positioned inside rounded corners */
 .vn-modal-content::-webkit-scrollbar {
   width: 6px;
 }
 
 .vn-modal-content::-webkit-scrollbar-track {
   background: transparent;
+  margin: 16px 6px 16px 0;
 }
 
 .vn-modal-content::-webkit-scrollbar-thumb {
   background: #e0e0e0;
   border-radius: 3px;
+  margin-right: 6px;
 }
 
 .vn-modal-content::-webkit-scrollbar-thumb:hover {
   background: #d0d0d0;
+}
+
+/* For Firefox - scrollbar is automatically inset */
+.vn-modal-content {
+  scrollbar-width: thin;
+  scrollbar-color: #e0e0e0 transparent;
 }
 
 .vn-modal-content p {
