@@ -23,7 +23,9 @@ function showContentPopup(content, apiResponse) {
 
       const tooltip = document.createElement("div");
       tooltip.className = "vn-floating-tooltip";
-      tooltip.innerText = text;
+      // Allow basic HTML (e.g., <strong>) in tooltip content.
+      // Content comes from static strings in the extension, not user input.
+      tooltip.innerHTML = text;
       document.body.appendChild(tooltip);
       activeTooltip = tooltip;
 
@@ -277,19 +279,33 @@ function showContentPopup(content, apiResponse) {
     if (apiResponse.per_criterion_scores) {
       const scores = apiResponse.per_criterion_scores;
       const hasScores = scores.evidence_quality > 0 || scores.source_agreement > 0 ||
-                       scores.claim_coverage > 0 || scores.stance_confidence > 0 ||
-                       scores.temporal_relevance > 0;
+                       scores.claim_coverage > 0 || scores.temporal_relevance > 0;
 
       if (hasScores) {
         const criterionDetails = document.createElement("div");
         // criterionDetails.className = "vn-criterion-details"; // No longer needed, handled by generic
 
         const scoreItems = [
-          { label: "Chất lượng bằng chứng", value: scores.evidence_quality, description: "Đo lường mức độ liên quan và độ mạnh của các bằng chứng tìm được. Điểm cao nghĩa là có trích dẫn trực tiếp hoặc dữ liệu cụ thể xác nhận nội dung." },
-          { label: "Độ đồng thuận nguồn", value: scores.source_agreement, description: "Phản ánh mức độ thống nhất giữa các nguồn tin. Khi nhiều tờ báo uy tín cùng đưa tin giống nhau, độ tin cậy sẽ cao hơn." },
-          { label: "Độ phủ mệnh đề", value: scores.claim_coverage, description: "Cho biết bao nhiêu phần trăm các ý chính trong bài viết đã được hệ thống tìm thấy và kiểm chứng đối chiếu với nguồn tin uy tín." },
-          { label: "Độ tin cậy phân loại", value: scores.stance_confidence, description: "Thể hiện độ chắc chắn của hệ thống AI khi xác định xem thông tin là đúng hay sai dựa trên ngữ cảnh và bằng chứng." },
-          { label: "Độ mới của bài báo", value: scores.temporal_relevance, description: "Đánh giá tính thời sự của nguồn tin. Các bài báo mới nhất thường phản ánh thông tin chính xác hơn cho các sự kiện đang diễn ra." }
+          {
+            label: "Chất lượng bằng chứng",
+            value: scores.evidence_quality,
+            description: "Mức độ chắc chắn của hệ thống khi đưa ra kết luận về độ chính xác của các luận điểm trong bài đăng khi so sánh với các nguồn tin chính thống. Điểm cao nghĩa là các luận điểm được đánh giá với độ chính xác cao."
+          },
+          {
+            label: "Mức độ đồng thuận nguồn tin",
+            value: scores.source_agreement,
+            description: "Cho biết các bài báo khác nhau đang cùng thống nhất về các luận điểm hay mâu thuẫn nhau. Điểm cao nghĩa là đa số nguồn tin uy tín cùng đưa ra thông tin giống nhau về các luận điểm đó."
+          },
+          {
+            label: "Mức độ bao phủ các luận điểm",
+            value: scores.claim_coverage,
+            description: "Cho biết bao nhiêu luận điểm chính trong bài đã được hệ thống kết luận là ‘<strong>được ủng hộ</strong>’. Điểm cao nghĩa là phần lớn các luận điểm quan trọng đã ‘<strong>được ủng hộ</strong>’ bởi nguồn báo đáng tin cậy."
+          },
+          {
+            label: "Độ mới của bài báo",
+            value: scores.temporal_relevance,
+            description: "Đo độ mới của các bài báo dùng để kiểm chứng. Điểm cao nghĩa là hệ thống chủ yếu dựa vào các bài báo gần đây, phù hợp với bối cảnh hiện tại."
+          }
         ];
 
         scoreItems.forEach(item => {
@@ -342,7 +358,7 @@ function showContentPopup(content, apiResponse) {
 
         const claimNumber = document.createElement("span");
         claimNumber.className = "vn-claim-number";
-        claimNumber.innerText = `Nội dung ${index + 1}:`;
+        claimNumber.innerText = `Luận điểm ${index + 1}:`;
 
         const claimVerdictBadge = document.createElement("span");
         const info = verdictInfo[cv.verdict] || { text: cv.verdict, color: "gray", icon: "?" };

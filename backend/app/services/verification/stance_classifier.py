@@ -310,9 +310,9 @@ class StanceClassifier:
                 article_content[:8000] + "\n\n[...bài viết còn tiếp, đã cắt ngắn...]"
             )
 
-        prompt = f"""Bạn là một trợ lý kiểm chứng thông tin. Phân tích xem BÀI BÁO có ủng hộ hay bác bỏ TUYÊN BỐ hay không.
+        prompt = f"""Bạn là một trợ lý kiểm chứng thông tin. Phân tích xem BÀI BÁO có ủng hộ hay bác bỏ LUẬN ĐIỂM hay không.
 
-TUYÊN BỐ:
+LUẬN ĐIỂM:
 "{claim}"
 
 BÀI BÁO (từ {article.source_name}, đăng ngày {pub_date}):
@@ -325,18 +325,18 @@ Nội dung:
 
 Nhiệm vụ của bạn:
 1. Đọc toàn bộ bài báo để hiểu ngữ cảnh đầy đủ
-2. Xác định xem bài báo có ủng hộ (SUPPORTS), bác bỏ (REFUTES), hay không đủ thông tin (NOT_ENOUGH_INFO) về tuyên bố
+2. Xác định xem bài báo có ủng hộ (SUPPORTS), bác bỏ (REFUTES), hay không đủ thông tin (NOT_ENOUGH_INFO) về luận điểm
 3. Trích xuất các đoạn văn bản CHÍNH XÁC từ bài báo làm bằng chứng
 
 Phân loại mối quan hệ:
-- SUPPORTS: Bài báo trực tiếp xác nhận tuyên bố là đúng
-- REFUTES: Bài báo trực tiếp chứng minh tuyên bố là sai
+- SUPPORTS: Bài báo trực tiếp xác nhận luận điểm là đúng
+- REFUTES: Bài báo trực tiếp chứng minh luận điểm là sai
 - NOT_ENOUGH_INFO: Bài báo liên quan nhưng không đủ để xác nhận hoặc bác bỏ
 
 Hướng dẫn đánh giá:
-1. SUPPORTS: Bài báo phải khẳng định CÙNG thông tin với tuyên bố (cùng số liệu, cùng sự kiện, cùng chi tiết)
+1. SUPPORTS: Bài báo phải khẳng định CÙNG thông tin với luận điểm (cùng số liệu, cùng sự kiện, cùng chi tiết)
 2. REFUTES: Bài báo phải ĐƯA RA thông tin TRÁI NGƯỢC (số liệu khác, phủ nhận sự kiện, chi tiết mâu thuẫn)
-3. NOT_ENOUGH_INFO: Bài báo nói về chủ đề liên quan nhưng không trực tiếp xác nhận/bác bỏ tuyên bố cụ thể
+3. NOT_ENOUGH_INFO: Bài báo nói về chủ đề liên quan nhưng không trực tiếp xác nhận/bác bỏ luận điểm cụ thể
 
 Lưu ý quan trọng:
 - Chỉ chọn SUPPORTS hoặc REFUTES khi bằng chứng RÕ RÀNG và TRỰC TIẾP
@@ -351,7 +351,7 @@ Trả lời dưới dạng JSON:
     "evidence_spans": [
         {{
             "text": "trích dẫn chính xác từ bài báo",
-            "reasoning": "giải thích tại sao đoạn này ủng hộ/bác bỏ tuyên bố"
+            "reasoning": "giải thích tại sao đoạn này ủng hộ/bác bỏ luận điểm"
         }},
         {{
             "text": "trích dẫn khác nếu cần",

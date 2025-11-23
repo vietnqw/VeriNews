@@ -208,7 +208,6 @@ class VerificationService:
             evidence_quality=metrics.evidence_quality,
             source_agreement=metrics.source_agreement,
             claim_coverage=metrics.claim_coverage,
-            stance_confidence=metrics.stance_confidence,
             temporal_relevance=metrics.temporal_relevance,
         )
 
@@ -242,7 +241,7 @@ class VerificationService:
             confidence=0.0,
             confidence_tier="NONE",
             explanation=(
-                "Không thể xác minh bài đăng này vì không tìm thấy tuyên bố cụ thể "
+                "Không thể xác minh bài đăng này vì không tìm thấy luận điểm cụ thể "
                 "nào cần kiểm chứng."
             ),
             claim_verdicts=[],
@@ -256,7 +255,6 @@ class VerificationService:
                 evidence_quality=0.0,
                 source_agreement=0.0,
                 claim_coverage=0.0,
-                stance_confidence=0.0,
                 temporal_relevance=0.0,
             ),
         )
@@ -291,7 +289,6 @@ class VerificationService:
                 evidence_quality=0.0,
                 source_agreement=0.0,
                 claim_coverage=0.0,
-                stance_confidence=0.0,
                 temporal_relevance=0.0,
             ),
         )
@@ -304,7 +301,7 @@ class VerificationService:
             confidence_tier="NONE",
             explanation=(
                 "Không tìm thấy bằng chứng cụ thể từ các nguồn tin để xác minh "
-                "các tuyên bố trong bài đăng này."
+                "các luận điểm trong bài đăng này."
             ),
             claim_verdicts=[
                 ClaimVerdictSchema(
@@ -326,7 +323,6 @@ class VerificationService:
                 evidence_quality=0.0,
                 source_agreement=0.0,
                 claim_coverage=0.0,
-                stance_confidence=0.0,
                 temporal_relevance=0.0,
             ),
         )

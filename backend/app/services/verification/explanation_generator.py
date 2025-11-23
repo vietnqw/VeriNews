@@ -145,10 +145,10 @@ BÀI ĐĂNG GỐC:
 KẾT QUẢ KIỂM CHỨNG:
 - Kết luận: {verdict_vn}
 - Độ tin cậy: {verdict.confidence:.0%}
-- Số tuyên bố được xác nhận: {verdict.supported_claims}/{verdict.total_claims}
-- Số tuyên bố bị bác bỏ: {verdict.refuted_claims}/{verdict.total_claims}
+- Số luận điểm được xác nhận: {verdict.supported_claims}/{verdict.total_claims}
+- Số luận điểm bị bác bỏ: {verdict.refuted_claims}/{verdict.total_claims}
 
-CHI TIẾT TỪNG TUYÊN BỐ:
+CHI TIẾT TỪNG LUẬN ĐIỂM:
 {json.dumps(claim_summaries, ensure_ascii=False, indent=2)}
 
 NGUỒN TIN SỬ DỤNG:
@@ -156,7 +156,7 @@ NGUỒN TIN SỬ DỤNG:
 
 Viết một đoạn giải thích ngắn gọn (tối đa {self.max_length} ký tự) bằng tiếng Việt:
 1. Tóm tắt kết quả kiểm chứng
-2. Nêu rõ những tuyên bố nào đúng/sai
+2. Nêu rõ những luận điểm nào đúng/sai
 3. Trích dẫn nguồn tin đáng tin cậy
 4. Giọng văn khách quan, dễ hiểu
 
@@ -170,7 +170,7 @@ Trả lời dưới dạng JSON:
     def _generate_no_claims_explanation(self) -> str:
         """Generate explanation when no claims were extracted."""
         return (
-            "Không thể xác minh bài đăng này vì không tìm thấy tuyên bố cụ thể nào "
+            "Không thể xác minh bài đăng này vì không tìm thấy luận điểm cụ thể nào "
             "cần kiểm chứng. Bài đăng có thể chỉ chứa ý kiến cá nhân hoặc thông tin "
             "quá chung chung để có thể xác minh."
         )
@@ -196,27 +196,27 @@ Trả lời dưới dạng JSON:
         if verdict.verdict == "FULLY_SUPPORTED":
             return (
                 f"Bài đăng này HOÀN TOÀN CHÍNH XÁC. Tất cả {verdict.total_claims} "
-                f"tuyên bố trong bài đăng đều được xác nhận bởi các nguồn tin "
+                f"luận điểm trong bài đăng đều được xác nhận bởi các nguồn tin "
                 f"đáng tin cậy: {', '.join(verdict.sources_used[:3])}."
             )
 
         elif verdict.verdict == "PARTIALLY_SUPPORTED":
             return (
                 f"Bài đăng này ĐÚNG MỘT PHẦN. {verdict.supported_claims}/{verdict.total_claims} "
-                f"tuyên bố được xác nhận, còn lại chưa đủ bằng chứng. "
+                f"luận điểm được xác nhận, còn lại chưa đủ bằng chứng. "
                 f"Nguồn: {', '.join(verdict.sources_used[:3])}."
             )
 
         elif verdict.verdict == "REFUTED":
             return (
                 f"Bài đăng này CHỨA THÔNG TIN SAI. {verdict.refuted_claims}/{verdict.total_claims} "
-                f"tuyên bố bị bác bỏ bởi bằng chứng từ các nguồn tin đáng tin cậy: "
+                f"luận điểm bị bác bỏ bởi bằng chứng từ các nguồn tin đáng tin cậy: "
                 f"{', '.join(verdict.sources_used[:3])}."
             )
 
         else:  # NOT_ENOUGH_INFO
             return (
                 f"CHƯA ĐỦ BẰNG CHỨNG để xác minh bài đăng này. Đã kiểm tra "
-                f"{verdict.total_claims} tuyên bố nhưng không tìm thấy đủ thông tin "
+                f"{verdict.total_claims} luận điểm nhưng không tìm thấy đủ thông tin "
                 f"từ các nguồn tin để đưa ra kết luận chắc chắn."
             )

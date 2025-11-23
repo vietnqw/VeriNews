@@ -64,7 +64,6 @@ function adaptVeriNewsResponse(veriNewsData) {
         evidence_quality: metrics.evidence_quality,
         source_agreement: metrics.source_agreement,
         claim_coverage: metrics.claim_coverage,
-        stance_confidence: metrics.stance_confidence,
         temporal_relevance: metrics.temporal_relevance
       };
     }
@@ -99,7 +98,6 @@ function adaptVeriNewsResponse(veriNewsData) {
       evidence_quality: confidence_metrics.evidence_quality || 0,
       source_agreement: confidence_metrics.source_agreement || 0,
       claim_coverage: confidence_metrics.claim_coverage || 0,
-      stance_confidence: confidence_metrics.stance_confidence || 0,
       temporal_relevance: confidence_metrics.temporal_relevance || 0
     } : null,
 

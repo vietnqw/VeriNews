@@ -90,19 +90,20 @@ class VerificationConfidenceMetricsSchema(BaseModel):
         description="Confidence tier: HIGH, MEDIUM, LOW, or NONE"
     )
     evidence_quality: float = Field(
-        ge=0.0, le=1.0, description="Average relevance score of evidence chunks"
+        ge=0.0,
+        le=1.0,
+        description="Average LLM confidence in stance classifications (55% weight)",
     )
     source_agreement: float = Field(
-        ge=0.0, le=1.0, description="Percentage of sources agreeing on verdict"
+        ge=0.0,
+        le=1.0,
+        description="Percentage of sources agreeing on verdict (25% weight)",
     )
     claim_coverage: float = Field(
-        ge=0.0, le=1.0, description="Percentage of claims fully supported"
-    )
-    stance_confidence: float = Field(
-        ge=0.0, le=1.0, description="Average LLM confidence in stance classifications"
+        ge=0.0, le=1.0, description="Percentage of claims fully supported (15% weight)"
     )
     temporal_relevance: float = Field(
-        ge=0.0, le=1.0, description="Recency score of articles"
+        ge=0.0, le=1.0, description="Recency score of articles (5% weight)"
     )
 
 
@@ -263,7 +264,7 @@ class VerificationResponse(BaseModel):
                     "verdict": "FULLY_SUPPORTED",
                     "confidence": 0.85,
                     "confidence_tier": "HIGH",
-                    "explanation": "Tất cả tuyên bố được xác nhận bởi nguồn tin đáng tin cậy",
+                    "explanation": "Tất cả luận điểm được xác nhận bởi nguồn tin đáng tin cậy",
                     "claim_verdicts": [
                         {
                             "claim_text": "VinTech công bố dự án nhà máy mới",
@@ -283,7 +284,6 @@ class VerificationResponse(BaseModel):
                         "evidence_quality": 0.88,
                         "source_agreement": 1.0,
                         "claim_coverage": 1.0,
-                        "stance_confidence": 0.9,
                         "temporal_relevance": 0.7,
                     },
                 },

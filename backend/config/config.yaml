@@ -142,9 +142,8 @@ verification:
   # Confidence scoring weights (must sum to 1.0)
   confidence_scoring:
     weights:
-      evidence_quality: 0.30  # Average relevance score of evidence chunks
+      evidence_quality: 0.55  # Average LLM confidence in stance classifications (combined with stance_confidence)
       source_agreement: 0.25  # Percentage of sources agreeing on verdict
-      stance_confidence: 0.25  # Average LLM confidence in stance classifications
       claim_coverage: 0.15  # Percentage of claims fully supported
       temporal_relevance: 0.05  # Recency of articles
     thresholds:

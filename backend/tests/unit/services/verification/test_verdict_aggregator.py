@@ -257,7 +257,6 @@ class TestVerdictAggregator:
         assert metrics.evidence_quality >= 0.0
         assert metrics.source_agreement >= 0.0
         assert metrics.claim_coverage >= 0.0
-        assert metrics.stance_confidence >= 0.0
         assert metrics.temporal_relevance >= 0.0
         assert metrics.confidence_tier in ["HIGH", "MEDIUM", "LOW", "NONE"]
 

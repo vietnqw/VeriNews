@@ -232,9 +232,8 @@ class VerdictSettings(BaseSettings):
 class VerificationConfidenceWeights(BaseSettings):
     """Weights for verification confidence scoring"""
 
-    evidence_quality: float = 0.30
+    evidence_quality: float = 0.55
     source_agreement: float = 0.25
-    stance_confidence: float = 0.25
     claim_coverage: float = 0.15
     temporal_relevance: float = 0.05
 

@@ -36,7 +36,6 @@ class ConfidenceMetrics:
     evidence_quality: float
     source_agreement: float
     claim_coverage: float
-    stance_confidence: float
     temporal_relevance: float
 
 
@@ -272,12 +271,11 @@ class VerdictAggregator:
                 evidence_quality=0.0,
                 source_agreement=0.0,
                 claim_coverage=0.0,
-                stance_confidence=0.0,
                 temporal_relevance=0.0,
             )
 
-        # Signal 1: Evidence Quality (30%) - average stance confidence
-        # (Previously used similarity score, now using LLM confidence as quality indicator)
+        # Signal 1: Evidence Quality (55%) - average LLM confidence in stance classification
+        # (Combined evidence_quality + stance_confidence for simplicity)
         evidence_quality = sum(s.confidence for s in stance_results) / len(
             stance_results
         )
@@ -291,12 +289,7 @@ class VerdictAggregator:
             supported_claims / len(claim_verdicts) if claim_verdicts else 0.0
         )
 
-        # Signal 4: Stance Confidence (25%) - average LLM confidence
-        stance_confidence = sum(s.confidence for s in stance_results) / len(
-            stance_results
-        )
-
-        # Signal 5: Temporal Relevance (5%) - recency of articles
+        # Signal 4: Temporal Relevance (5%) - recency of articles
         temporal_relevance = self._calculate_temporal_relevance(stance_results)
 
         # Calculate weighted overall confidence
@@ -304,7 +297,6 @@ class VerdictAggregator:
             self.weights.evidence_quality * evidence_quality
             + self.weights.source_agreement * source_agreement
             + self.weights.claim_coverage * claim_coverage
-            + self.weights.stance_confidence * stance_confidence
             + self.weights.temporal_relevance * temporal_relevance
         )
 
@@ -324,7 +316,6 @@ class VerdictAggregator:
             evidence_quality=evidence_quality,
             source_agreement=source_agreement,
             claim_coverage=claim_coverage,
-            stance_confidence=stance_confidence,
             temporal_relevance=temporal_relevance,
         )
 
