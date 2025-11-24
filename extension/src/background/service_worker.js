@@ -14,12 +14,11 @@ function getTimeoutSignal(ms) {
 }
 
 async function performHealthCheck(config) {
-  const { baseUrl, healthEndpoint, apiKey, timeoutMs } = config;
+  const { baseUrl, healthEndpoint, timeoutMs } = config;
   try {
     const res = await fetch(`${baseUrl}${healthEndpoint}`, {
       method: "GET",
       headers: {
-        "X-Secret-Key": apiKey,
         "ngrok-skip-browser-warning": "true",
       },
       cache: "no-store",

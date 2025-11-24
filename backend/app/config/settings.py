@@ -313,7 +313,6 @@ class Settings(BaseSettings):
     BACKEND_HOST: str = "0.0.0.0"
     BACKEND_PORT: int = 8000
     BACKEND_CORS_ORIGINS: list[str] = ["*"]
-    SECRET_KEY: str
 
     # Logging Configuration
     LOG_LEVEL: str = "INFO"

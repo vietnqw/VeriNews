@@ -74,7 +74,6 @@ async function checkConnection() {
       config: {
         baseUrl: window.CONFIG.BACKEND_BASE_URL,
         healthEndpoint: window.CONFIG.HEALTH_ENDPOINT,
-        apiKey: window.CONFIG.API_KEY,
         timeoutMs: window.CONFIG.CONNECTION_TIMEOUT,
       },
     });
