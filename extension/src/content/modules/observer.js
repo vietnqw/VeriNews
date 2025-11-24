@@ -10,6 +10,7 @@ function findAndProcessContent(node) {
   const articles = node.querySelectorAll(
     `[role="article"]:not([${PROCESSED_ATTR}])`
   );
+
   articles.forEach((article) => {
     if (isComment(article)) {
       createOverlay(article, "comment");
@@ -33,6 +34,7 @@ function findAndProcessContent(node) {
   const messageNodes = node.querySelectorAll(
     '[data-ad-preview="message"], [data-ad-rendering-role="story_message"]'
   );
+
   messageNodes.forEach((message) => {
     const postRoot =
       message.closest('[role="article"], div[aria-labelledby][aria-describedby]') ||

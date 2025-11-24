@@ -13,15 +13,33 @@ function getTextFromPost(element) {
     : element.querySelector(messageSelector);
 
   if (messageContainer) {
-    // If we found the specific container, only search for text within it.
-    const textNodes = messageContainer.querySelectorAll('div[dir="auto"]');
-    textContent = Array.from(textNodes)
-      .map((node) => node.innerText)
-      .join("\n\n");
+    // Try div[dir="auto"] first (common structure)
+    let textNodes = messageContainer.querySelectorAll('div[dir="auto"]');
+
+    // If no div[dir="auto"], try span[dir="auto"] (alternative Facebook structure)
+    if (textNodes.length === 0) {
+      textNodes = messageContainer.querySelectorAll('span[dir="auto"]');
+    }
+
+    if (textNodes.length > 0) {
+      textContent = Array.from(textNodes)
+        .map((node) => node.innerText)
+        .join("\n\n");
+    } else {
+      // Fallback: get all text directly from the message container
+      textContent = messageContainer.innerText;
+    }
   } else {
     // STRATEGY 2 (FALLBACK): If the specific container doesn't exist, use a safer version of the old logic.
-    // Find all text nodes but filter out any that are inside a nested 'article' (a comment).
-    const allTextNodes = element.querySelectorAll('div[dir="auto"]');
+    // Try div[dir="auto"] first
+    let allTextNodes = element.querySelectorAll('div[dir="auto"]');
+
+    // If no div[dir="auto"], try span[dir="auto"]
+    if (allTextNodes.length === 0) {
+      allTextNodes = element.querySelectorAll('span[dir="auto"]');
+    }
+
+    // Filter out any that are inside a nested 'article' (a comment).
     const postTextNodes = Array.from(allTextNodes).filter((node) => {
       // The closest article parent should be the element itself, not another one.
       return node.closest('[role="article"]') === element;
@@ -47,25 +65,39 @@ function getTextFromComment(element) {
     return specificContentNode.innerText.trim();
   }
 
+  // Also try span variant
+  const specificContentSpan = element.querySelector(
+    'span[dir="auto"][style*="text-align: start"]'
+  );
+  if (specificContentSpan && specificContentSpan.innerText.trim()) {
+    return specificContentSpan.innerText.trim();
+  }
+
   // --- STRATEGY 2: Fallback for different structures ---
-  // If the first method fails, find all text divs and exclude the author's name div.
-  const allTextDivs = Array.from(element.querySelectorAll('div[dir="auto"]'));
+  // If the first method fails, find all text nodes and exclude the author's name.
+  let allTextNodes = Array.from(element.querySelectorAll('div[dir="auto"]'));
+
+  // If no div[dir="auto"], try span[dir="auto"]
+  if (allTextNodes.length === 0) {
+    allTextNodes = Array.from(element.querySelectorAll('span[dir="auto"]'));
+  }
+
   const authorLink = element.querySelector(
     'a[href*="profile.php"], a[href*="?id="], a[href*="/user/"]'
   );
 
-  // Find the specific div that contains the author link
-  const authorDiv = authorLink
-    ? allTextDivs.find((div) => div.contains(authorLink))
+  // Find the specific node that contains the author link
+  const authorNode = authorLink
+    ? allTextNodes.find((node) => node.contains(authorLink))
     : null;
 
-  // Find the first div that is NOT the author's div and has text.
-  const contentDiv = allTextDivs.find(
-    (div) => div !== authorDiv && div.innerText.trim()
+  // Find the first node that is NOT the author's node and has text.
+  const contentNode = allTextNodes.find(
+    (node) => node !== authorNode && node.innerText.trim()
   );
 
-  if (contentDiv) {
-    return contentDiv.innerText.trim();
+  if (contentNode) {
+    return contentNode.innerText.trim();
   }
 
   return "No text found.";
@@ -133,7 +165,7 @@ async function extractText(target, type) {
   } else {
     // If "See more" exists, click it and wait.
     return new Promise((resolve) => {
-      const observer = new MutationObserver((mutations, obs) => {
+      const observer = new MutationObserver((_mutations, obs) => {
         obs.disconnect();
         resolve(getTextFunction(target));
       });

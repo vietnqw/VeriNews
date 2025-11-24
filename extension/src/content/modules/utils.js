@@ -12,7 +12,7 @@ function isComment(element) {
   ) {
     return true;
   }
-  return !!element.parentElement.closest('[role="article"]');
+  return !!element.parentElement?.closest('[role="article"]');
 }
 
 /**
