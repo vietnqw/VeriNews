@@ -16,12 +16,15 @@ logger = get_logger(__name__)
 
 
 # Create async engine (main database connection pool)
+# Note: For async I/O-bound apps, fewer connections are needed since
+# the event loop handles concurrency while waiting for external APIs (OpenAI).
+# Most request time is spent on OpenAI calls, not DB queries.
 engine = create_async_engine(
     url=settings.POSTGRES_URL,
     echo=False,  # Set to True for SQL query logging
     pool_pre_ping=True,  # Verify connections before using them
-    pool_size=5,  # Number of connections to maintain
-    max_overflow=10,  # Maximum overflow connections
+    pool_size=3,  # Base connections per worker (async apps need fewer)
+    max_overflow=2,  # Small overflow buffer for burst traffic
 )
 
 # Create session factory to manage database sessions

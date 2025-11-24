@@ -7,6 +7,11 @@ Usage:
     ./scripts/verinews dev stop        # Stop development environment
     ./scripts/verinews dev reset       # Reset database (destructive!)
 
+    ./scripts/verinews prod start      # Start production server
+    ./scripts/verinews prod start -g   # Start with Gunicorn (recommended)
+    ./scripts/verinews prod stop       # Stop production environment
+    ./scripts/verinews prod status     # Check production status
+
     ./scripts/verinews crawler start   # Start crawler (workers + scheduler)
     ./scripts/verinews crawler stop    # Stop crawler
     ./scripts/verinews crawler sync    # Sync RSS feeds from sources.yaml
@@ -18,7 +23,7 @@ Usage:
 
 import typer
 
-from cli.commands import crawler, dev, feeds, utils
+from cli.commands import crawler, dev, feeds, prod, utils
 
 app = typer.Typer(
     name="verinews",
@@ -28,6 +33,7 @@ app = typer.Typer(
 
 # Register command groups
 app.add_typer(dev.app, name="dev")
+app.add_typer(prod.app, name="prod")
 app.add_typer(crawler.app, name="crawler")
 app.add_typer(feeds.app, name="feeds")
 
