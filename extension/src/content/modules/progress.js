@@ -35,6 +35,7 @@ class ProgressTracker {
     this.startTime = null;
     this.elapsedSeconds = 0;
     this.eventSource = null;
+    this.abortController = null;
     this.isStreaming = false;
 
     // Initialize stage states
@@ -99,7 +100,24 @@ class ProgressTracker {
    * Fetch-based SSE streaming (works with POST)
    */
   async _streamWithFetch(content, cacheBypass) {
+    // Create AbortController for timeout handling
+    this.abortController = new AbortController();
+    const { signal } = this.abortController;
+
+    // Timeout configuration (in milliseconds)
+    const INITIAL_TIMEOUT = 30000; // 30s for initial connection
+    const READ_TIMEOUT = 60000; // 60s between stream chunks
+
+    let receivedResult = false;
+
     try {
+      // Set initial connection timeout
+      const connectionTimeoutId = setTimeout(() => {
+        if (!receivedResult) {
+          this.abortController.abort();
+        }
+      }, INITIAL_TIMEOUT);
+
       const response = await fetch(
         `${CONFIG.BACKEND_BASE_URL}/api/v1/verify?stream=true`,
         {
@@ -111,8 +129,11 @@ class ProgressTracker {
             text: content,
             cache_bypass: cacheBypass,
           }),
+          signal,
         }
       );
+
+      clearTimeout(connectionTimeoutId);
 
       if (!response.ok) {
         this.onError({
@@ -125,10 +146,32 @@ class ProgressTracker {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
+      let readTimeoutId = null;
+
+      // Helper to reset read timeout
+      const resetReadTimeout = () => {
+        if (readTimeoutId) clearTimeout(readTimeoutId);
+        readTimeoutId = setTimeout(() => {
+          if (!receivedResult) {
+            console.error("Stream read timeout - server may be down");
+            reader.cancel();
+            this.abortController.abort();
+          }
+        }, READ_TIMEOUT);
+      };
+
+      resetReadTimeout();
 
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
+
+        if (done) {
+          clearTimeout(readTimeoutId);
+          break;
+        }
+
+        // Reset timeout on each chunk received
+        resetReadTimeout();
 
         buffer += decoder.decode(value, { stream: true });
 
@@ -140,6 +183,9 @@ class ProgressTracker {
           if (line.startsWith("data: ")) {
             try {
               const eventData = JSON.parse(line.slice(6));
+              if (eventData.type === "result") {
+                receivedResult = true;
+              }
               this._handleStreamEvent(eventData);
             } catch (e) {
               console.error("Failed to parse SSE event:", line, e);
@@ -147,11 +193,27 @@ class ProgressTracker {
           }
         }
       }
+
+      // Check if stream ended without receiving a result
+      if (!receivedResult) {
+        this.onError({
+          message: "Kết nối bị ngắt trước khi nhận được kết quả. Vui lòng thử lại.",
+        });
+      }
     } catch (error) {
       console.error("Streaming error:", error);
-      this.onError({
-        message: "Connection lost during verification. Please try again.",
-      });
+
+      // Provide user-friendly error messages
+      let message = "Mất kết nối trong quá trình xác minh. Vui lòng thử lại.";
+      if (error.name === "AbortError") {
+        message = "Hết thời gian chờ phản hồi từ máy chủ. Vui lòng thử lại.";
+      } else if (error instanceof TypeError && error.message.includes("Failed to fetch")) {
+        message = "Không thể kết nối đến máy chủ VeriNews. Vui lòng kiểm tra kết nối mạng.";
+      }
+
+      this.onError({ message });
+    } finally {
+      this.abortController = null;
     }
   }
 
@@ -305,7 +367,7 @@ class ProgressTracker {
       this.onComplete(adaptedResponse);
     } catch (error) {
       this.onError({
-        message: "Failed to verify content. Please try again.",
+        message: "Xác minh nội dung thất bại. Vui lòng thử lại.",
       });
     }
   }
@@ -324,6 +386,11 @@ class ProgressTracker {
     if (this.eventSource) {
       this.eventSource.close();
       this.eventSource = null;
+    }
+    // Abort any ongoing fetch request
+    if (this.abortController) {
+      this.abortController.abort();
+      this.abortController = null;
     }
     this.isStreaming = false;
   }

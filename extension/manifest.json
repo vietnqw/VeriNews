@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "VeriNews",
   "version": "2.1.0",
-  "description": "An application that verifies the credibility of online news content by comparing their content with trusted news sources using AI-powered semantic analysis",
+  "description": "Ứng dụng xác minh độ tin cậy của nội dung tin tức trực tuyến bằng cách so sánh với các nguồn tin đáng tin cậy sử dụng phân tích ngữ nghĩa AI",
   "permissions": ["storage"],
   "host_permissions": ["<all_urls>"],
   "icons": {

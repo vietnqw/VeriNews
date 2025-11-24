@@ -2,9 +2,10 @@
  * Creates the enhanced progress loading UI with stages
  * @param {object} progressTracker - Progress tracker instance
  * @param {Function} onComplete - Callback when streaming completes
+ * @param {Function} onError - Optional callback when an error occurs
  * @returns {HTMLElement} Progress container element
  */
-function createProgressLoadingUI(progressTracker, onComplete) {
+function createProgressLoadingUI(progressTracker, onComplete, onError = null) {
   const progressContainer = document.createElement("div");
   progressContainer.className = "vn-progress-loading-container";
 
@@ -132,13 +133,24 @@ function createProgressLoadingUI(progressTracker, onComplete) {
     }, 500);
   };
 
+  // Store the original onError callback before overwriting
+  const originalOnError = progressTracker.onError;
+
   progressTracker.onError = (error) => {
     progressContainer.innerHTML = `
-      <div style="text-align: center; padding: 24px;">
-        <h3 style="color: #ef4444; margin-bottom: 8px;">Xác minh thất bại</h3>
-        <p style="color: #666; font-size: 14px;">${error.message}</p>
+      <div style="text-align: center; padding: 32px 24px;">
+        <h3 style="color: #ef4444; margin-bottom: 12px; font-size: 18px;">Xác minh thất bại</h3>
+        <p style="color: #666; font-size: 15px; line-height: 1.5;">${error.message}</p>
       </div>
     `;
+    // Call the original onError callback to re-enable the button
+    if (originalOnError) {
+      originalOnError(error);
+    }
+    // Also call the onError parameter if provided
+    if (onError) {
+      onError(error);
+    }
   };
 
   return progressContainer;
@@ -724,7 +736,7 @@ function showContentPopup(content, apiResponse, progressTracker = null, onComple
           (progress) => console.log("Progress:", progress),
           null, // onComplete will be handled by createProgressLoadingUI
           (error) => {
-            document.querySelector(".vn-modal-overlay")?.remove();
+            // Don't remove modal overlay - let error UI display inside the modal
             console.error("Verification error:", error);
             refreshButton.disabled = false;
             refreshButton.innerText = "Thất bại - Thử lại";
@@ -799,7 +811,7 @@ async function createOverlay(target, type) {
       (progress) => console.log("Progress:", progress),
       null, // onComplete will be handled by createProgressLoadingUI
       (error) => {
-        document.querySelector(".vn-modal-overlay")?.remove();
+        // Don't remove modal overlay - let error UI display inside the modal
         console.error("Verification error:", error);
         buttonImg.alt = "Xác minh";
         button.disabled = false;
