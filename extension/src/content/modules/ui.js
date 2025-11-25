@@ -446,7 +446,7 @@ function showContentPopup(content, apiResponse, progressTracker = null, onComple
     if (apiResponse.per_criterion_scores) {
       const scores = apiResponse.per_criterion_scores;
       const hasScores = scores.evidence_quality > 0 || scores.source_agreement > 0 ||
-                       scores.claim_coverage > 0 || scores.temporal_relevance > 0;
+                       scores.source_quantity > 0 || scores.temporal_relevance > 0;
 
       if (hasScores) {
         const criterionDetails = document.createElement("div");
@@ -464,9 +464,9 @@ function showContentPopup(content, apiResponse, progressTracker = null, onComple
             description: "Cho biết các bài báo khác nhau đang cùng thống nhất về các luận điểm hay mâu thuẫn nhau. Điểm cao nghĩa là đa số nguồn tin uy tín cùng đưa ra thông tin giống nhau về các luận điểm đó."
           },
           {
-            label: "Mức độ bao phủ các luận điểm",
-            value: scores.claim_coverage,
-            description: "Cho biết bao nhiêu luận điểm chính trong bài đã được hệ thống kết luận là ‘<strong>được ủng hộ</strong>’. Điểm cao nghĩa là phần lớn các luận điểm quan trọng đã ‘<strong>được ủng hộ</strong>’ bởi nguồn báo đáng tin cậy."
+            label: "Số lượng nguồn tin",
+            value: scores.source_quantity,
+            description: "Cho biết số lượng nguồn tin đáng tin cậy đã được sử dụng để xác minh. Điểm cao nghĩa là có nhiều nguồn tin khác nhau cùng cung cấp thông tin về các luận điểm này."
           },
           {
             label: "Độ mới của bài báo",
