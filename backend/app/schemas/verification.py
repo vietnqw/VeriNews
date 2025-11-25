@@ -35,6 +35,15 @@ class OverallVerdictType(str, Enum):
     NOT_ENOUGH_INFO = "NOT_ENOUGH_INFO"
 
 
+class NotEnoughInfoReason(str, Enum):
+    """Reason categories for NOT_ENOUGH_INFO verdicts"""
+
+    NO_FACTUAL_CLAIMS = "NO_FACTUAL_CLAIMS"
+    NO_RELEVANT_ARTICLES = "NO_RELEVANT_ARTICLES"
+    CONFLICTING_SOURCES = "CONFLICTING_SOURCES"
+    INSUFFICIENT_EVIDENCE = "INSUFFICIENT_EVIDENCE"
+
+
 class EvidenceSpan(BaseModel):
     """Extracted evidence span from article"""
 
@@ -71,7 +80,15 @@ class ClaimVerdictSchema(BaseModel):
 
     claim_text: str = Field(description="The claim being verified")
     verdict: ClaimVerdictType = Field(description="Verdict for this claim")
-    confidence: float = Field(ge=0.0, le=1.0, description="Confidence in this verdict")
+    confidence: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Confidence in this verdict (null for NOT_ENOUGH_INFO)",
+    )
+    reason: NotEnoughInfoReason | None = Field(
+        default=None, description="Reason category for NOT_ENOUGH_INFO verdicts"
+    )
     supporting_evidence: List[StanceResultSchema] = Field(
         default_factory=list, description="Evidence that supports the claim"
     )
@@ -86,24 +103,21 @@ class VerificationConfidenceMetricsSchema(BaseModel):
     overall_confidence: float = Field(
         ge=0.0, le=1.0, description="Overall verification confidence (0-1)"
     )
-    confidence_tier: str = Field(
-        description="Confidence tier: HIGH, MEDIUM, LOW, or NONE"
-    )
     evidence_quality: float = Field(
         ge=0.0,
         le=1.0,
-        description="Average LLM confidence in stance classifications (55% weight)",
+        description="Average LLM confidence in stance classifications (45% weight)",
     )
     source_agreement: float = Field(
         ge=0.0,
         le=1.0,
-        description="Percentage of sources agreeing on verdict (25% weight)",
+        description="Percentage of sources agreeing on verdict (30% weight, verdict-aware)",
     )
-    claim_coverage: float = Field(
-        ge=0.0, le=1.0, description="Percentage of claims fully supported (15% weight)"
+    source_quantity: float = Field(
+        ge=0.0, le=1.0, description="Number of unique sources normalized (15% weight)"
     )
     temporal_relevance: float = Field(
-        ge=0.0, le=1.0, description="Recency score of articles (5% weight)"
+        ge=0.0, le=1.0, description="Recency score of articles (10% weight)"
     )
 
 
@@ -111,8 +125,15 @@ class VerificationResultSchema(BaseModel):
     """Complete verification result"""
 
     verdict: OverallVerdictType = Field(description="Overall verdict for the post")
-    confidence: float = Field(ge=0.0, le=1.0, description="Overall confidence score")
-    confidence_tier: str = Field(description="Confidence tier: HIGH, MEDIUM, LOW")
+    confidence: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Overall confidence score (null for NOT_ENOUGH_INFO)",
+    )
+    reason: NotEnoughInfoReason | None = Field(
+        default=None, description="Reason category for NOT_ENOUGH_INFO verdicts"
+    )
     explanation: str = Field(description="Human-readable explanation in Vietnamese")
     claim_verdicts: List[ClaimVerdictSchema] = Field(
         description="Per-claim verification results"
@@ -123,8 +144,9 @@ class VerificationResultSchema(BaseModel):
     sources_used: List[str] = Field(
         description="List of news sources used for verification"
     )
-    confidence_metrics: VerificationConfidenceMetricsSchema = Field(
-        description="Detailed confidence breakdown"
+    confidence_metrics: VerificationConfidenceMetricsSchema | None = Field(
+        default=None,
+        description="Detailed confidence breakdown (null for NOT_ENOUGH_INFO)",
     )
 
 
@@ -263,13 +285,14 @@ class VerificationResponse(BaseModel):
                 "verification": {
                     "verdict": "FULLY_SUPPORTED",
                     "confidence": 0.85,
-                    "confidence_tier": "HIGH",
+                    "reason": None,
                     "explanation": "Tất cả luận điểm được xác nhận bởi nguồn tin đáng tin cậy",
                     "claim_verdicts": [
                         {
                             "claim_text": "VinTech công bố dự án nhà máy mới",
                             "verdict": "SUPPORTED",
                             "confidence": 0.9,
+                            "reason": None,
                             "supporting_evidence": [],
                             "refuting_evidence": [],
                         }
@@ -280,10 +303,9 @@ class VerificationResponse(BaseModel):
                     "sources_used": ["VnExpress"],
                     "confidence_metrics": {
                         "overall_confidence": 0.85,
-                        "confidence_tier": "HIGH",
                         "evidence_quality": 0.88,
                         "source_agreement": 1.0,
-                        "claim_coverage": 1.0,
+                        "source_quantity": 0.2,
                         "temporal_relevance": 0.7,
                     },
                 },
