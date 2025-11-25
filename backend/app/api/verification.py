@@ -83,13 +83,16 @@ def _verification_result_to_dict(verification_result) -> Dict:
     return {
         "verdict": verification_result.verdict.value,
         "confidence": verification_result.confidence,
-        "confidence_tier": verification_result.confidence_tier,
+        "reason": verification_result.reason.value
+        if verification_result.reason
+        else None,
         "explanation": verification_result.explanation,
         "claim_verdicts": [
             {
                 "claim_text": cv.claim_text,
                 "verdict": cv.verdict.value,
                 "confidence": cv.confidence,
+                "reason": cv.reason.value if cv.reason else None,
                 "supporting_evidence": [
                     {
                         "claim_text": e.claim_text,
@@ -135,10 +138,9 @@ def _verification_result_to_dict(verification_result) -> Dict:
         "sources_used": verification_result.sources_used,
         "confidence_metrics": {
             "overall_confidence": verification_result.confidence_metrics.overall_confidence,
-            "confidence_tier": verification_result.confidence_metrics.confidence_tier,
             "evidence_quality": verification_result.confidence_metrics.evidence_quality,
             "source_agreement": verification_result.confidence_metrics.source_agreement,
-            "claim_coverage": verification_result.confidence_metrics.claim_coverage,
+            "source_quantity": verification_result.confidence_metrics.source_quantity,
             "temporal_relevance": verification_result.confidence_metrics.temporal_relevance,
         }
         if verification_result.confidence_metrics
@@ -177,6 +179,7 @@ async def _verify_post_standard(
                         OverallVerdictType,
                         ClaimVerdictSchema,
                         ClaimVerdictType,
+                        NotEnoughInfoReason,
                         StanceResultSchema,
                         StanceType,
                         EvidenceSpan,
@@ -197,7 +200,10 @@ async def _verify_post_standard(
                         ClaimVerdictSchema(
                             claim_text=cv["claim_text"],
                             verdict=ClaimVerdictType(cv["verdict"]),
-                            confidence=cv["confidence"],
+                            confidence=cv.get("confidence"),
+                            reason=NotEnoughInfoReason(cv["reason"])
+                            if cv.get("reason")
+                            else None,
                             supporting_evidence=[
                                 StanceResultSchema(
                                     claim_text=e["claim_text"],
@@ -246,8 +252,10 @@ async def _verify_post_standard(
 
                     verification_result = VerificationResultSchema(
                         verdict=OverallVerdictType(cached_verification_dict["verdict"]),
-                        confidence=cached_verification_dict["confidence"],
-                        confidence_tier=cached_verification_dict["confidence_tier"],
+                        confidence=cached_verification_dict.get("confidence"),
+                        reason=NotEnoughInfoReason(cached_verification_dict["reason"])
+                        if cached_verification_dict.get("reason")
+                        else None,
                         explanation=cached_verification_dict["explanation"],
                         claim_verdicts=claim_verdicts,
                         total_claims=cached_verification_dict["total_claims"],
