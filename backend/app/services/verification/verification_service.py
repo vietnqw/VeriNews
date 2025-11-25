@@ -14,6 +14,7 @@ from app.schemas.verification import (
     ClaimVerdictSchema,
     ClaimVerdictType,
     EvidenceSpan,
+    NotEnoughInfoReason,
     OverallVerdictType,
     StanceResultSchema,
     StanceType,
@@ -122,9 +123,14 @@ class VerificationService:
         total_time = (time.time() - total_start) * 1000
         stage_timings["verification_total"] = total_time
 
+        confidence_str = (
+            f"{overall_verdict.confidence:.2f}"
+            if overall_verdict.confidence is not None
+            else "N/A"
+        )
         logger.info(
             f"Verification complete: {overall_verdict.verdict} "
-            f"(confidence: {overall_verdict.confidence:.2f}) in {total_time:.0f}ms"
+            f"(confidence: {confidence_str}) in {total_time:.0f}ms"
         )
 
         # Convert to schema
@@ -195,21 +201,23 @@ class VerificationService:
                     claim_text=cv.claim_text,
                     verdict=ClaimVerdictType(cv.verdict),
                     confidence=cv.confidence,
+                    reason=NotEnoughInfoReason(cv.reason) if cv.reason else None,
                     supporting_evidence=supporting,
                     refuting_evidence=refuting,
                 )
             )
 
-        # Convert confidence metrics
-        metrics = verdict.confidence_metrics
-        confidence_metrics_schema = VerificationConfidenceMetricsSchema(
-            overall_confidence=metrics.overall_confidence,
-            confidence_tier=metrics.confidence_tier,
-            evidence_quality=metrics.evidence_quality,
-            source_agreement=metrics.source_agreement,
-            claim_coverage=metrics.claim_coverage,
-            temporal_relevance=metrics.temporal_relevance,
-        )
+        # Convert confidence metrics (None for NOT_ENOUGH_INFO)
+        confidence_metrics_schema = None
+        if verdict.confidence_metrics:
+            metrics = verdict.confidence_metrics
+            confidence_metrics_schema = VerificationConfidenceMetricsSchema(
+                overall_confidence=metrics.overall_confidence,
+                evidence_quality=metrics.evidence_quality,
+                source_agreement=metrics.source_agreement,
+                source_quantity=metrics.source_quantity,
+                temporal_relevance=metrics.temporal_relevance,
+            )
 
         # Map verdict to enum
         verdict_map = {
@@ -224,7 +232,7 @@ class VerificationService:
                 verdict.verdict, OverallVerdictType.NOT_ENOUGH_INFO
             ),
             confidence=verdict.confidence,
-            confidence_tier=verdict.confidence_tier,
+            reason=NotEnoughInfoReason(verdict.reason) if verdict.reason else None,
             explanation=explanation,
             claim_verdicts=claim_verdict_schemas,
             total_claims=verdict.total_claims,
@@ -238,8 +246,8 @@ class VerificationService:
         """Create result when no claims were extracted."""
         return VerificationResultSchema(
             verdict=OverallVerdictType.NOT_ENOUGH_INFO,
-            confidence=0.0,
-            confidence_tier="NONE",
+            confidence=None,
+            reason=NotEnoughInfoReason.NO_FACTUAL_CLAIMS,
             explanation=(
                 "Không thể xác minh bài đăng này vì không tìm thấy luận điểm cụ thể "
                 "nào cần kiểm chứng."
@@ -249,22 +257,15 @@ class VerificationService:
             supported_claims=0,
             refuted_claims=0,
             sources_used=[],
-            confidence_metrics=VerificationConfidenceMetricsSchema(
-                overall_confidence=0.0,
-                confidence_tier="NONE",
-                evidence_quality=0.0,
-                source_agreement=0.0,
-                claim_coverage=0.0,
-                temporal_relevance=0.0,
-            ),
+            confidence_metrics=None,
         )
 
     def _create_no_articles_result(self, claims: List[str]) -> VerificationResultSchema:
         """Create result when no articles were retrieved."""
         return VerificationResultSchema(
             verdict=OverallVerdictType.NOT_ENOUGH_INFO,
-            confidence=0.0,
-            confidence_tier="NONE",
+            confidence=None,
+            reason=NotEnoughInfoReason.NO_RELEVANT_ARTICLES,
             explanation=(
                 "Không tìm thấy bài viết nào từ các nguồn tin đáng tin cậy liên quan "
                 "đến nội dung bài đăng này."
@@ -273,7 +274,8 @@ class VerificationService:
                 ClaimVerdictSchema(
                     claim_text=claim,
                     verdict=ClaimVerdictType.NOT_ENOUGH_INFO,
-                    confidence=0.0,
+                    confidence=None,
+                    reason=NotEnoughInfoReason.NO_RELEVANT_ARTICLES,
                     supporting_evidence=[],
                     refuting_evidence=[],
                 )
@@ -283,22 +285,15 @@ class VerificationService:
             supported_claims=0,
             refuted_claims=0,
             sources_used=[],
-            confidence_metrics=VerificationConfidenceMetricsSchema(
-                overall_confidence=0.0,
-                confidence_tier="NONE",
-                evidence_quality=0.0,
-                source_agreement=0.0,
-                claim_coverage=0.0,
-                temporal_relevance=0.0,
-            ),
+            confidence_metrics=None,
         )
 
     def _create_no_evidence_result(self, claims: List[str]) -> VerificationResultSchema:
         """Create result when no evidence was found for claims."""
         return VerificationResultSchema(
             verdict=OverallVerdictType.NOT_ENOUGH_INFO,
-            confidence=0.0,
-            confidence_tier="NONE",
+            confidence=None,
+            reason=NotEnoughInfoReason.INSUFFICIENT_EVIDENCE,
             explanation=(
                 "Không tìm thấy bằng chứng cụ thể từ các nguồn tin để xác minh "
                 "các luận điểm trong bài đăng này."
@@ -307,7 +302,8 @@ class VerificationService:
                 ClaimVerdictSchema(
                     claim_text=claim,
                     verdict=ClaimVerdictType.NOT_ENOUGH_INFO,
-                    confidence=0.0,
+                    confidence=None,
+                    reason=NotEnoughInfoReason.INSUFFICIENT_EVIDENCE,
                     supporting_evidence=[],
                     refuting_evidence=[],
                 )
@@ -317,12 +313,5 @@ class VerificationService:
             supported_claims=0,
             refuted_claims=0,
             sources_used=[],
-            confidence_metrics=VerificationConfidenceMetricsSchema(
-                overall_confidence=0.0,
-                confidence_tier="NONE",
-                evidence_quality=0.0,
-                source_agreement=0.0,
-                claim_coverage=0.0,
-                temporal_relevance=0.0,
-            ),
+            confidence_metrics=None,
         )

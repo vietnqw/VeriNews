@@ -137,6 +137,13 @@ class ExplanationGenerator:
         }
         verdict_vn = verdict_map.get(verdict.verdict, verdict.verdict)
 
+        # Format confidence safely
+        confidence_str = (
+            f"{verdict.confidence:.0%}"
+            if verdict.confidence is not None
+            else "Không xác định"
+        )
+
         prompt = f"""Bạn là trợ lý tạo giải thích cho kết quả kiểm chứng thông tin.
 
 BÀI ĐĂNG GỐC:
@@ -144,7 +151,7 @@ BÀI ĐĂNG GỐC:
 
 KẾT QUẢ KIỂM CHỨNG:
 - Kết luận: {verdict_vn}
-- Độ tin cậy: {verdict.confidence:.0%}
+- Độ tin cậy: {confidence_str}
 - Số luận điểm được xác nhận: {verdict.supported_claims}/{verdict.total_claims}
 - Số luận điểm bị bác bỏ: {verdict.refuted_claims}/{verdict.total_claims}
 
