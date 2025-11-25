@@ -22,7 +22,8 @@ class ClaimVerdict:
 
     claim_text: str
     verdict: str  # SUPPORTED, REFUTED, NOT_ENOUGH_INFO
-    confidence: float
+    confidence: float | None  # None for NOT_ENOUGH_INFO
+    reason: str | None = None  # Reason for NOT_ENOUGH_INFO
     supporting_evidence: List[StanceResult] = field(default_factory=list)
     refuting_evidence: List[StanceResult] = field(default_factory=list)
 
@@ -32,10 +33,9 @@ class ConfidenceMetrics:
     """Metrics for confidence calculation"""
 
     overall_confidence: float
-    confidence_tier: str  # HIGH, MEDIUM, LOW, NONE
     evidence_quality: float
     source_agreement: float
-    claim_coverage: float
+    source_quantity: float
     temporal_relevance: float
 
 
@@ -44,14 +44,14 @@ class OverallVerdict:
     """Overall verification verdict"""
 
     verdict: str  # FULLY_SUPPORTED, PARTIALLY_SUPPORTED, REFUTED, NOT_ENOUGH_INFO
-    confidence: float
-    confidence_tier: str
-    claim_verdicts: List[ClaimVerdict]
-    confidence_metrics: ConfidenceMetrics
-    sources_used: List[str]
-    total_claims: int
-    supported_claims: int
-    refuted_claims: int
+    confidence: float | None  # None for NOT_ENOUGH_INFO
+    reason: str | None = None  # Reason for NOT_ENOUGH_INFO
+    claim_verdicts: List[ClaimVerdict] = field(default_factory=list)
+    confidence_metrics: ConfidenceMetrics | None = None  # None for NOT_ENOUGH_INFO
+    sources_used: List[str] = field(default_factory=list)
+    total_claims: int = 0
+    supported_claims: int = 0
+    refuted_claims: int = 0
 
 
 class VerdictAggregator:
@@ -67,7 +67,6 @@ class VerdictAggregator:
         self.conflict_mode = settings.verification.aggregation.conflict_mode
         self.verdict_mode = settings.verification.verdict.mode
         self.weights = settings.verification.confidence_scoring.weights
-        self.thresholds = settings.verification.confidence_scoring.thresholds
 
     def aggregate_verdicts(
         self,
@@ -104,12 +103,12 @@ class VerdictAggregator:
             verdict = self._aggregate_claim_verdict(claim, stances)
             claim_verdicts.append(verdict)
 
-        # Compute overall verdict
-        overall_verdict = self._compute_overall_verdict(claim_verdicts)
+        # Compute overall verdict and reason (if NOT_ENOUGH_INFO)
+        overall_verdict, reason = self._compute_overall_verdict(claim_verdicts)
 
-        # Calculate confidence metrics
+        # Calculate confidence metrics (None for NOT_ENOUGH_INFO)
         confidence_metrics = self._calculate_confidence_metrics(
-            stance_results, claim_verdicts
+            stance_results, claim_verdicts, overall_verdict
         )
 
         # Collect sources used
@@ -126,8 +125,10 @@ class VerdictAggregator:
 
         return OverallVerdict(
             verdict=overall_verdict,
-            confidence=confidence_metrics.overall_confidence,
-            confidence_tier=confidence_metrics.confidence_tier,
+            confidence=confidence_metrics.overall_confidence
+            if confidence_metrics
+            else None,
+            reason=reason,
             claim_verdicts=claim_verdicts,
             confidence_metrics=confidence_metrics,
             sources_used=sources_used,
@@ -153,7 +154,8 @@ class VerdictAggregator:
             return ClaimVerdict(
                 claim_text=claim,
                 verdict="NOT_ENOUGH_INFO",
-                confidence=0.0,
+                confidence=None,
+                reason="NO_RELEVANT_ARTICLES",
                 supporting_evidence=[],
                 refuting_evidence=[],
             )
@@ -168,12 +170,11 @@ class VerdictAggregator:
                 f"Claim '{claim[:30]}...' has conflicting evidence: "
                 f"{len(supports)} supports, {len(refutes)} refutes"
             )
-            # Average confidence from all stances
-            avg_confidence = sum(s.confidence for s in stances) / len(stances)
             return ClaimVerdict(
                 claim_text=claim,
                 verdict="NOT_ENOUGH_INFO",
-                confidence=avg_confidence * 0.5,  # Reduce confidence due to conflict
+                confidence=None,
+                reason="CONFLICTING_SOURCES",
                 supporting_evidence=supports,
                 refuting_evidence=refutes,
             )
@@ -201,19 +202,18 @@ class VerdictAggregator:
             )
 
         # Not enough evidence
-        avg_confidence = (
-            sum(s.confidence for s in stances) / len(stances) if stances else 0.0
-        )
         return ClaimVerdict(
             claim_text=claim,
             verdict="NOT_ENOUGH_INFO",
-            confidence=avg_confidence
-            * 0.7,  # Reduce confidence for insufficient evidence
+            confidence=None,
+            reason="INSUFFICIENT_EVIDENCE",
             supporting_evidence=supports,
             refuting_evidence=[],
         )
 
-    def _compute_overall_verdict(self, claim_verdicts: List[ClaimVerdict]) -> str:
+    def _compute_overall_verdict(
+        self, claim_verdicts: List[ClaimVerdict]
+    ) -> tuple[str, str | None]:
         """
         Compute overall verdict from claim verdicts.
 
@@ -223,10 +223,10 @@ class VerdictAggregator:
             claim_verdicts: List of claim verdicts
 
         Returns:
-            Overall verdict string
+            Tuple of (verdict, reason) where reason is only set for NOT_ENOUGH_INFO
         """
         if not claim_verdicts:
-            return "NOT_ENOUGH_INFO"
+            return "NOT_ENOUGH_INFO", "NO_FACTUAL_CLAIMS"
 
         refuted = [v for v in claim_verdicts if v.verdict == "REFUTED"]
         supported = [v for v in claim_verdicts if v.verdict == "SUPPORTED"]
@@ -236,95 +236,118 @@ class VerdictAggregator:
 
         # Worst case: any refuted claim = REFUTED overall
         if refuted:
-            return "REFUTED"
+            return "REFUTED", None
 
         # All claims supported = FULLY_SUPPORTED
         if len(supported) == total:
-            return "FULLY_SUPPORTED"
+            return "FULLY_SUPPORTED", None
 
         # Mix of supported and NEI = PARTIALLY_SUPPORTED
         if supported and nei:
-            return "PARTIALLY_SUPPORTED"
+            return "PARTIALLY_SUPPORTED", None
 
-        # All NEI
-        return "NOT_ENOUGH_INFO"
+        # All NEI - determine reason
+        reason = self._determine_nei_reason(claim_verdicts)
+        return "NOT_ENOUGH_INFO", reason
+
+    def _determine_nei_reason(self, claim_verdicts: List[ClaimVerdict]) -> str:
+        """
+        Determine the reason for NOT_ENOUGH_INFO verdict.
+
+        Args:
+            claim_verdicts: List of claim verdicts
+
+        Returns:
+            Reason code string
+        """
+        if not claim_verdicts:
+            return "NO_FACTUAL_CLAIMS"
+
+        # Check if any claim has evidence
+        has_any_evidence = any(
+            v.supporting_evidence or v.refuting_evidence for v in claim_verdicts
+        )
+
+        if not has_any_evidence:
+            return "NO_RELEVANT_ARTICLES"
+
+        # Check for conflicting sources
+        has_conflicts = any(
+            v.supporting_evidence and v.refuting_evidence for v in claim_verdicts
+        )
+
+        if has_conflicts:
+            return "CONFLICTING_SOURCES"
+
+        return "INSUFFICIENT_EVIDENCE"
 
     def _calculate_confidence_metrics(
         self,
         stance_results: List[StanceResult],
         claim_verdicts: List[ClaimVerdict],
-    ) -> ConfidenceMetrics:
+        overall_verdict: str,
+    ) -> ConfidenceMetrics | None:
         """
         Calculate multi-signal confidence metrics.
 
         Args:
             stance_results: All stance classification results
             claim_verdicts: All claim verdicts
+            overall_verdict: The overall verdict string
 
         Returns:
-            ConfidenceMetrics with all signals
+            ConfidenceMetrics with all signals, or None for NOT_ENOUGH_INFO
         """
-        if not stance_results or not claim_verdicts:
-            return ConfidenceMetrics(
-                overall_confidence=0.0,
-                confidence_tier="NONE",
-                evidence_quality=0.0,
-                source_agreement=0.0,
-                claim_coverage=0.0,
-                temporal_relevance=0.0,
-            )
+        # Return None for NOT_ENOUGH_INFO verdicts
+        if overall_verdict == "NOT_ENOUGH_INFO":
+            return None
 
-        # Signal 1: Evidence Quality (55%) - average LLM confidence in stance classification
-        # (Combined evidence_quality + stance_confidence for simplicity)
+        if not stance_results or not claim_verdicts:
+            return None
+
+        # Signal 1: Evidence Quality (45%) - average LLM confidence in stance classification
         evidence_quality = sum(s.confidence for s in stance_results) / len(
             stance_results
         )
 
-        # Signal 2: Source Agreement (25%) - percentage of sources agreeing
-        source_agreement = self._calculate_source_agreement(stance_results)
-
-        # Signal 3: Claim Coverage (15%) - percentage of claims fully supported
-        supported_claims = sum(1 for v in claim_verdicts if v.verdict == "SUPPORTED")
-        claim_coverage = (
-            supported_claims / len(claim_verdicts) if claim_verdicts else 0.0
+        # Signal 2: Source Agreement (30%) - verdict-aware agreement
+        source_agreement = self._calculate_source_agreement(
+            stance_results, overall_verdict
         )
 
-        # Signal 4: Temporal Relevance (5%) - recency of articles
+        # Signal 3: Source Quantity (15%) - number of unique sources
+        source_quantity = self._calculate_source_quantity(stance_results)
+
+        # Signal 4: Temporal Relevance (10%) - recency of articles
         temporal_relevance = self._calculate_temporal_relevance(stance_results)
 
         # Calculate weighted overall confidence
         overall_confidence = (
             self.weights.evidence_quality * evidence_quality
             + self.weights.source_agreement * source_agreement
-            + self.weights.claim_coverage * claim_coverage
+            + self.weights.source_quantity * source_quantity
             + self.weights.temporal_relevance * temporal_relevance
         )
 
-        # Determine confidence tier
-        if overall_confidence >= self.thresholds.high:
-            confidence_tier = "HIGH"
-        elif overall_confidence >= self.thresholds.medium:
-            confidence_tier = "MEDIUM"
-        elif overall_confidence >= self.thresholds.low:
-            confidence_tier = "LOW"
-        else:
-            confidence_tier = "NONE"
-
         return ConfidenceMetrics(
             overall_confidence=overall_confidence,
-            confidence_tier=confidence_tier,
             evidence_quality=evidence_quality,
             source_agreement=source_agreement,
-            claim_coverage=claim_coverage,
+            source_quantity=source_quantity,
             temporal_relevance=temporal_relevance,
         )
 
-    def _calculate_source_agreement(self, stance_results: List[StanceResult]) -> float:
+    def _calculate_source_agreement(
+        self, stance_results: List[StanceResult], overall_verdict: str
+    ) -> float:
         """
         Calculate the percentage of sources that agree on the verdict.
+        Verdict-aware: counts SUPPORTS for SUPPORTED/FULLY_SUPPORTED,
+        REFUTES for REFUTED, and max for PARTIALLY_SUPPORTED.
 
         Args:
             stance_results: All stance results
+            overall_verdict: The overall verdict
 
         Returns:
             Agreement ratio (0-1)
@@ -337,9 +360,31 @@ class VerdictAggregator:
         refutes = sum(1 for s in stance_results if s.stance == "REFUTES")
         total = len(stance_results)
 
-        # Agreement is the ratio of the majority stance
-        max_stance = max(supports, refutes)
-        return max_stance / total if total > 0 else 0.0
+        if overall_verdict in ["FULLY_SUPPORTED", "SUPPORTED"]:
+            return supports / total if total > 0 else 0.0
+        elif overall_verdict == "REFUTED":
+            return refutes / total if total > 0 else 0.0
+        else:  # PARTIALLY_SUPPORTED
+            max_stance = max(supports, refutes)
+            return max_stance / total if total > 0 else 0.0
+
+    def _calculate_source_quantity(self, stance_results: List[StanceResult]) -> float:
+        """
+        Calculate source quantity score.
+        More unique sources = higher confidence.
+
+        Args:
+            stance_results: All stance results
+
+        Returns:
+            Source quantity score (0.2 per source, max 1.0)
+        """
+        if not stance_results:
+            return 0.0
+
+        unique_sources = len(set(r.source_name for r in stance_results))
+        # 1 source = 0.2, 2 = 0.4, 3 = 0.6, 4 = 0.8, 5+ = 1.0
+        return min(unique_sources * 0.2, 1.0)
 
     def _calculate_temporal_relevance(
         self, stance_results: List[StanceResult]
