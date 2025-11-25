@@ -232,25 +232,16 @@ class VerdictSettings(BaseSettings):
 class VerificationConfidenceWeights(BaseSettings):
     """Weights for verification confidence scoring"""
 
-    evidence_quality: float = 0.55
-    source_agreement: float = 0.25
-    claim_coverage: float = 0.15
-    temporal_relevance: float = 0.05
-
-
-class VerificationConfidenceThresholds(BaseSettings):
-    """Thresholds for verification confidence tiers"""
-
-    high: float = 0.75
-    medium: float = 0.50
-    low: float = 0.25
+    evidence_quality: float = 0.45
+    source_agreement: float = 0.30
+    source_quantity: float = 0.15
+    temporal_relevance: float = 0.10
 
 
 class VerificationConfidenceScoringSettings(BaseSettings):
     """Verification confidence scoring configuration"""
 
     weights: VerificationConfidenceWeights = VerificationConfidenceWeights()
-    thresholds: VerificationConfidenceThresholds = VerificationConfidenceThresholds()
 
 
 class ExplanationSettings(BaseSettings):

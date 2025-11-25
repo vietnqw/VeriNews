@@ -142,15 +142,10 @@ verification:
   # Confidence scoring weights (must sum to 1.0)
   confidence_scoring:
     weights:
-      evidence_quality: 0.55  # Average LLM confidence in stance classifications (combined with stance_confidence)
-      source_agreement: 0.25  # Percentage of sources agreeing on verdict
-      claim_coverage: 0.15  # Percentage of claims fully supported
-      temporal_relevance: 0.05  # Recency of articles
-    thresholds:
-      high: 0.75  # >= 75% = HIGH confidence
-      medium: 0.50  # >= 50% = MEDIUM confidence
-      low: 0.25  # >= 25% = LOW confidence
-      # < 25% = NONE
+      evidence_quality: 0.45  # Average LLM confidence in stance classifications
+      source_agreement: 0.30  # Percentage of sources agreeing on verdict (verdict-aware)
+      source_quantity: 0.15  # Number of unique sources (normalized)
+      temporal_relevance: 0.10  # Recency of articles
 
   # Explanation generation
   explanation:
