@@ -1,11 +1,13 @@
 /* Modal Footer */
 .vn-modal-footer {
-  background: #f9fafb;
+  background: #ffffff;
   border-top: 1px solid #e5e7eb;
-  padding: 16px 32px;
+  padding: 20px 32px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
 .vn-footer-left {
@@ -16,16 +18,16 @@
 
 .vn-footer-info {
   font-size: 13px;
-  color: #6b7280;
+  color: #475569;
 }
 
-.vn-footer-info strong {
-  font-weight: 500;
+.vn-footer-label {
+  font-weight: 600;
+  color: #0f172a;
 }
 
-/* AI Disclaimer (in footer) */
 .vn-footer-disclaimer {
-  font-size: 11px;
-  color: #9ca3af;
-  font-style: italic;
+  font-size: 12px;
+  color: #94a3b8;
+  font-style: normal;
 }
