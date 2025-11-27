@@ -1,8 +1,10 @@
-# Backend: AI/ML Services
+# Backend: AI/ML Services (Retrieval)
 
 ## What It Is
 
-The AI/ML Services provide intelligent processing using OpenAI's models. These services power the "understanding" parts of the retrieval system.
+The AI/ML Services provide intelligent processing using OpenAI's models. These services power the "understanding" parts of the retrieval system, enabling semantic search, claim extraction, relevance scoring, and confidence assessment.
+
+**Note**: This document covers AI services for the **Retrieval Pipeline** only. For verification AI services (stance classification, explanation generation), see `03-backend-verification-pipeline.md`.
 
 ## What's Implemented
 
@@ -438,116 +440,6 @@ else:
 
 **Token Cost**: Negligible (pure Python processing, no API calls)
 
-### 7. Stance Classifier Service (Verification Pipeline)
-
-**What it does**: Classifies whether articles support, refute, or don't provide enough info for claims
-
-**Input**: Claim-article pairs (5 claims × 10 articles = 50 pairs max)
-
-**Output**: Stance results with evidence spans
-```python
-{
-    "stance": "SUPPORTS",  # or REFUTES, NOT_ENOUGH_INFO
-    "confidence": 0.92,
-    "evidence_spans": [
-        {"text": "...", "reasoning": "..."}
-    ],
-    "overall_reasoning": "..."
-}
-```
-
-**How it works**:
-
-**LLM Configuration**:
-- Model: gpt-4o-mini (configurable)
-- Task: Natural Language Inference (NLI)
-- Prompt: ~1,000 tokens per pair
-- Language: Vietnamese (instructions in Vietnamese)
-
-**Parallel Processing**:
-- **Num Workers**: 4 concurrent workers
-- **Timeout**: 10 seconds per worker
-- **Batch Strategy**: Round-robin distribution
-- **Concurrency Limit**: 4 max concurrent API calls
-
-**Classification Output**:
-- **SUPPORTS**: Article directly supports the claim
-- **REFUTES**: Article contradicts/refutes the claim
-- **NOT_ENOUGH_INFO**: Article doesn't provide sufficient evidence
-
-**Evidence Extraction**:
-- Direct quotes from article supporting/refuting claim
-- Reasoning explaining why quote is relevant
-- Confidence score (0-1) on stance classification
-
-**Error Handling**:
-- **Worker Timeout** (>10s): Return default `NOT_ENOUGH_INFO`
-- **JSON Parse Failure**: Return default `NOT_ENOUGH_INFO`
-- **Logged**: All failures logged as warnings
-
-**Token Cost**:
-- Input: ~1,000 tokens per claim-article pair
-- 50 pairs × 1,000 tokens = ~50,000 tokens
-- **Cost**: ~$0.01-0.02 per verification request
-
-### 8. Explanation Generator Service (Verification Pipeline)
-
-**What it does**: Generates human-readable Vietnamese explanation of verification results
-
-**Input**:
-- Overall verdict (FULLY_SUPPORTED, PARTIALLY_SUPPORTED, REFUTED, NOT_ENOUGH_INFO)
-- Original post text
-- Claim verdicts with evidence counts
-- Supporting/refuting article count
-
-**Output**: Vietnamese explanation (max 500 characters)
-
-**How it works**:
-
-**Processing Modes**:
-
-1. **Rule-Based Mode** (Simple cases):
-   - No articles found → "Không tìm thấy bài viết liên quan"
-   - No claims extracted → "Không tìm thấy tuyên bố có thể xác minh"
-   - All claims supported → "Hoàn toàn chính xác"
-
-2. **LLM Mode** (Complex cases):
-   - Uses gpt-4o-mini with temperature 0.3 (slight creativity)
-   - Prompt: "Generate a concise Vietnamese explanation of this verdict..."
-   - Max tokens: 150
-   - Ensures natural, readable output
-
-3. **Fallback Mode** (LLM failure):
-   - Returns rule-based explanation
-   - Logged as warning
-
-**Verdict Mapping** (Vietnamese):
-```python
-{
-    "FULLY_SUPPORTED": "HOÀN TOÀN CHÍNH XÁC",
-    "PARTIALLY_SUPPORTED": "ĐÚNG MỘT PHẦN",
-    "REFUTED": "SAI SỰ THẬT",
-    "NOT_ENOUGH_INFO": "CHƯA ĐỦ BẰNG CHỨNG"
-}
-```
-
-**Example Outputs**:
-```
-Input: FULLY_SUPPORTED, 3/3 claims supported, 5 sources
-Output: "Cả 3 tuyên bố đều được xác nhận bởi 5 nguồn tin đáng tin cậy. Thông tin này là chính xác."
-
-Input: PARTIALLY_SUPPORTED, 2/3 claims supported
-Output: "2 trong 3 tuyên bố được xác nhận. Tuyên bố thứ 3 chưa có đủ bằng chứng từ các nguồn tin."
-
-Input: REFUTED, 0/3 claims supported
-Output: "Thông tin này không chính xác. Tất cả tuyên bố đều mâu thuẫn với các nguồn tin đáng tin cậy."
-```
-
-**Token Cost**:
-- Rule-based: ~0 tokens (pure logic)
-- LLM-based: ~400 tokens (prompt + response)
-- **Cost**: ~$0.0005 per explanation
-
 ---
 
 ## AI Provider Abstraction
@@ -558,11 +450,20 @@ The code has a base `AIProvider` class that can work with different providers:
 
 This makes it easy to switch or add alternative AI providers via `config.yaml`.
 
+**Supported Providers**:
+- ✅ **OpenAI** (fully implemented)
+- ⚠️ **Anthropic** (defined in factory, raises NotImplementedError)
+- ⚠️ **Local** (defined in factory, raises NotImplementedError)
+
+**Singleton Caching**: Provider instances cached in `_instances` dict for efficiency
+
+---
+
 ## Cost Management
 
-### Token Breakdown per Verification Request
+### Token Breakdown per Retrieval Request
 
-**Retrieval Pipeline**:
+**Retrieval Pipeline** (AI services only):
 
 | Stage | Tokens | Cost (USD) |
 |-------|--------|-----------|
@@ -571,26 +472,21 @@ This makes it easy to switch or add alternative AI providers via `config.yaml`.
 | Chunk Reranking (4 workers) | 2,000 | 0.002-0.003 |
 | Article Reranking (8 workers) | 2,400 | 0.0005-0.003 |
 | Confidence Scoring (embeddings) | 350 | 0.00035 |
-| **Retrieval Total** | **6,400** | **$0.005-0.009** |
+| **Retrieval Total** | **~6,400** | **$0.005-0.009** |
 
-**Verification Pipeline** (if articles found):
+**Cost per Retrieval Request**: **~$0.005-0.009**
 
-| Stage | Tokens | Cost (USD) |
-|-------|--------|-----------|
-| Stance Classification (50 pairs) | 50,000 | 0.01-0.02 |
-| Explanation Generation | 400 | 0.0005 |
-| **Verification Total** | **50,400** | **$0.011-0.021** |
+**Monthly Costs** (Retrieval only):
+- **100 requests/day**: $0.50-0.90/day = **$15-27/month**
+- **1,000 requests/day**: $5-9/day = **$150-270/month**
 
-**Overall Cost per Verification**:
-- **Typical Request**: ~29,500 tokens = **$0.015-0.027**
-- **At 100 requests/day**: $1.50-2.70/day = **$45-81/month**
-- **At 1,000 requests/day**: $15-27/day = **$450-810/month**
+**Note**: Verification pipeline adds ~$0.015 per request (see `03-backend-verification-pipeline.md`)
 
 **With Caching** (Redis):
-- **Cache hit**: Skips retrieval pipeline only; verification still runs (~1-2 seconds total)
+- **Cache hit**: Skips retrieval pipeline entirely
 - **Cache TTL**: 24 hours
 - **Expected cache hit rate**: 20-40% (repeated queries from same users)
-- **Monthly savings**: Partial reduction in API costs (verification still incurs LLM costs)
+- **Monthly savings**: 20-40% reduction in retrieval costs
 
 ### Cost Optimization Strategies
 
@@ -598,7 +494,10 @@ This makes it easy to switch or add alternative AI providers via `config.yaml`.
 2. **Parallel Workers**: Distributes load efficiently
 3. **Early Exit Optimization** (Article Reranking): Skips scoring if single high-confidence article
 4. **Score Thresholds**: Stops processing low-confidence results early
-5. **Redis Caching**: Completely eliminates costs for repeated queries
+5. **Redis Caching**: Completely eliminates retrieval costs for repeated queries
+6. **Batch Embedding**: Single API call for multiple texts
+
+---
 
 ## Implementation Status & Deviations from Documentation
 
@@ -609,8 +508,6 @@ This makes it easy to switch or add alternative AI providers via `config.yaml`.
 - ✅ Chunk Reranking Service (parallel workers, entity filtering)
 - ✅ Article-Level Reranking Service (adaptive batching, early exit)
 - ✅ Confidence Scoring Service (5-signal calculation with title similarity)
-- ✅ Stance Classifier Service (NLI-based verification)
-- ✅ Explanation Generator Service (Vietnamese explanations)
 - ✅ Vietnamese Text Processor (pyvi integration)
 - ✅ AI Provider Abstraction (factory pattern, singleton caching)
 
@@ -618,20 +515,12 @@ This makes it easy to switch or add alternative AI providers via `config.yaml`.
 
 - 🎯 **Two-Step Query Extraction Prompt**: RATIONALE step before JSON
 - 🎯 **Entity Normalization**: Strips years from events, legal suffixes
-- 🎯 **Explanation Generator Service**: Rule-based + LLM modes
 - 🎯 **Early Exit Optimization**: Article reranking skips if score ≥ 9.0
 - 🎯 **Adaptive Batching**: Article reranking listwise vs pairwise
 - 🎯 **Error Handling**: Comprehensive timeout + fallback mechanisms
 - 🎯 **Vietnamese-Specific Prompt Instructions**: Detailed guidelines in query extraction
 
-### Provider Abstraction Details
-
-**Supported Providers**:
-- ✅ **OpenAI** (fully implemented)
-- ⚠️ **Anthropic** (defined in factory, raises NotImplementedError)
-- ⚠️ **Local** (defined in factory, raises NotImplementedError)
-
-**Singleton Caching**: Provider instances cached in `_instances` dict for efficiency
+---
 
 ## Configuration
 
@@ -686,19 +575,7 @@ retrieval:
       title_similarity: 0.10             # Requires 2 embedding calls
 ```
 
-### Verification Pipeline Configuration
-
-```yaml
-verification:
-  enabled: true
-  stance_classification:
-    num_parallel_workers: 4
-    worker_timeout_seconds: 10
-    min_confidence: 0.6
-  explanation:
-    language: "vi"
-    max_length: 500
-```
+---
 
 ## What's NOT Implemented
 
@@ -707,3 +584,15 @@ verification:
 - ❌ Anthropic Provider (partially defined, not implemented)
 - ❌ Local Model deployment
 - ❌ Other language support (Vietnamese/English only)
+- ❌ Multi-hop query expansion
+- ❌ Query reformulation based on retrieval results
+
+---
+
+## Related Documentation
+
+- **Retrieval Pipeline**: See `02-backend-retrieval-pipeline.md` for the complete retrieval workflow
+- **Verification Pipeline**: See `03-backend-verification-pipeline.md` for stance classification and verdict aggregation
+- **API Layer**: See `01-backend-api-layer.md` for endpoint details
+- **Database**: See `05-backend-database.md` for data models
+- **Cache Layer**: See `06-backend-cache-layer.md` for Redis caching strategy

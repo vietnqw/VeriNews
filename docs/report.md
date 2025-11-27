@@ -64,7 +64,7 @@ graph TD
     OpenAI["<b>🤖 API OpenAI</b><br/><div style='text-align:left'>• text-embedding-3-small<br/>• GPT-4o-mini</div>"]
 
     %% Data Crawler (Background)
-    subgraph CrawlerPipeline["<b>Thu thập dữ liệu</b> <br> <i>(Tự động chạy nền mỗi giờ)</i>"]
+    subgraph CrawlerPipeline["<b>Thu thập dữ liệu</b> <br> <i>(Tự động chạy nền mỗi 30 phút)</i>"]
         direction LR
         Crawl["<b>Thu thập & quét</b><br/><i>RSS → Nội dung</i>"]
         Process["<b>Xử lý & lập chỉ mục</b><br/><i>Chunk → Nhúng → Index</i>"]

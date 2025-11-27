@@ -43,7 +43,7 @@ graph TD
     OpenAI["<b>🤖 OpenAI API</b><br/><div style='text-align:left'>• text-embedding-3-small<br/>• GPT-4o-mini</div>"]
 
     %% Data Crawler (Background)
-    subgraph CrawlerPipeline["<b>Data Crawler</b> <br> <i>(Background - Every hour)</i>"]
+    subgraph CrawlerPipeline["<b>Data Crawler</b> <br> <i>(Background - Every 30 minutes)</i>"]
         direction LR
         Crawl["<b>Crawl & Scrape</b><br/><i>RSS → Content</i>"]
         Process["<b>Process & Index</b><br/><i>Chunk → Embed → Index</i>"]
