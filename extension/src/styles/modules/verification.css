@@ -44,8 +44,8 @@
 .vn-result-hero.neutral { background: linear-gradient(135deg, #64748b, #475569); }
 
 .vn-hero-icon-circle {
-  width: 80px;
-  height: 80px;
+  width: 60px;
+  height: 60px;
   border-radius: 999px;
   border: none;
   background: rgba(255, 255, 255, 0.2);
@@ -54,16 +54,16 @@
   justify-content: center;
   margin: 0 auto 16px;
   z-index: 1;
-  box-shadow: 0 0 0 8px rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.1);
 }
 
 .vn-hero-icon-circle .vn-icon {
-  width: 40px;
-  height: 40px;
+  width: 30px;
+  height: 30px;
 }
 
 .vn-hero-title {
-  font-size: 36px;
+  font-size: 28px;
   font-weight: 800;
   margin: 0;
   letter-spacing: -0.025em;
@@ -72,7 +72,7 @@
 
 @media (min-width: 768px) {
   .vn-hero-title {
-    font-size: 48px;
+    font-size: 36px;
   }
 }
 

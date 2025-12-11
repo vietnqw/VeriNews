@@ -446,14 +446,13 @@ function renderResultView({ modal, content, apiResponse, createCollapsibleSectio
 }
 
 function createHeroSection(apiResponse) {
-  const scorePercent = Math.round(apiResponse.final_score * 100);
   const decisionMap = {
     "Fully Supported": "Hoàn toàn chính xác",
     "Partially Supported": "Đúng một phần",
-    "Refuted": "Sai lệch/Giả mạo",
+    "Refuted": "Chưa chính xác",
     "Not Enough Info": "Chưa đủ thông tin",
     "Verified": "Đã xác minh",
-    "Misleading/False": "Sai lệch/Giả mạo",
+    "Misleading/False": "Chưa chính xác",
     "Out of Context": "Sai ngữ cảnh",
     "Unverified": "Chưa xác minh"
   };
@@ -479,13 +478,20 @@ function createHeroSection(apiResponse) {
   heroTitle.className = "vn-hero-title";
   heroTitle.innerText = decisionLabel;
 
-  const heroConfidence = document.createElement("p");
-  heroConfidence.className = "vn-hero-confidence";
-  heroConfidence.innerText = `Độ tin cậy ${scorePercent}%`;
+  // Only show confidence if it's not null
+  if (apiResponse.final_score !== null && apiResponse.final_score !== undefined) {
+    const scorePercent = Math.round(apiResponse.final_score * 100);
+    const heroConfidence = document.createElement("p");
+    heroConfidence.className = "vn-hero-confidence";
+    heroConfidence.innerText = `Độ tin cậy ${scorePercent}%`;
+    heroSection.appendChild(heroBadge);
+    heroSection.appendChild(heroTitle);
+    heroSection.appendChild(heroConfidence);
+  } else {
+    heroSection.appendChild(heroBadge);
+    heroSection.appendChild(heroTitle);
+  }
 
-  heroSection.appendChild(heroBadge);
-  heroSection.appendChild(heroTitle);
-  heroSection.appendChild(heroConfidence);
   return heroSection;
 }
 
@@ -558,8 +564,12 @@ function createArticlesSection(apiResponse, createCollapsibleSection) {
 function createScoresSection(apiResponse, createCollapsibleSection, showTooltip, hideTooltip) {
   if (!apiResponse.per_criterion_scores) return null;
   const scores = apiResponse.per_criterion_scores;
-  const hasScores = scores.evidence_quality > 0 || scores.source_agreement > 0 ||
-    scores.source_quantity > 0 || scores.temporal_relevance > 0;
+
+  // Helper to check if a score value is valid (not null/undefined and > 0)
+  const isValidScore = (val) => val !== null && val !== undefined && val > 0;
+
+  const hasScores = isValidScore(scores.evidence_quality) || isValidScore(scores.source_agreement) ||
+    isValidScore(scores.source_quantity) || isValidScore(scores.temporal_relevance);
   if (!hasScores) return null;
 
   const criterionDetails = document.createElement("div");
@@ -587,6 +597,9 @@ function createScoresSection(apiResponse, createCollapsibleSection, showTooltip,
   ];
 
   scoreItems.forEach(item => {
+    // Skip items with null/undefined values
+    if (item.value === null || item.value === undefined) return;
+
     const row = document.createElement("div");
     row.className = "vn-score-row";
 
@@ -635,7 +648,11 @@ function createClaimAnalysisSection(apiResponse, createCollapsibleSection) {
     const badge = document.createElement("span");
     const info = verdictInfo[cv.verdict] || { text: cv.verdict, color: "gray", icon: "?" };
     badge.className = `vn-claim-verdict-badge ${info.color}`;
-    badge.innerHTML = `${info.icon} ${info.text} (${Math.round(cv.confidence * 100)}%)`;
+    // Only show confidence percentage if confidence is not null
+    const confidenceText = cv.confidence !== null && cv.confidence !== undefined
+      ? ` (${Math.round(cv.confidence * 100)}%)`
+      : "";
+    badge.innerHTML = `${info.icon} ${info.text}${confidenceText}`;
 
     header.appendChild(number);
     header.appendChild(badge);

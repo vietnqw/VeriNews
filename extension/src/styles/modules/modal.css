@@ -74,7 +74,7 @@
   position: absolute;
   width: 18px;
   height: 2px;
-  background-color: #9ca3af;
+  background-color: #ffffff;
   border-radius: 2px;
   transition: background-color 0.2s ease;
 }
@@ -87,9 +87,13 @@
   transform: rotate(-45deg);
 }
 
+.vn-modal-close:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
 .vn-modal-close:hover::before,
 .vn-modal-close:hover::after {
-  background-color: #6b7280;
+  background-color: rgba(255, 255, 255, 0.8);
 }
 
 .vn-modal-body {

@@ -19,7 +19,7 @@ function adaptVeriNewsResponse(veriNewsData) {
   // Determine verdict based on verification result
   let overall_decision = "Unverified";
   let flag = "gray";
-  let final_score = 0.0;
+  let final_score = null;  // Keep null to distinguish from 0
   let claim_verdicts = [];
   let confidence_metrics = null;
   let explanation = "";
@@ -30,10 +30,8 @@ function adaptVeriNewsResponse(veriNewsData) {
   if (veriNewsData.verification) {
     const verification = veriNewsData.verification;
     const verdict = verification.verdict;
-    // Confidence can be null for NOT_ENOUGH_INFO verdicts
-    final_score = verification.confidence !== null && verification.confidence !== undefined
-      ? verification.confidence
-      : 0;
+    // Confidence can be null for NOT_ENOUGH_INFO verdicts - preserve null
+    final_score = verification.confidence;
 
     // Extract reason for NOT_ENOUGH_INFO verdicts
     reason = verification.reason || null;

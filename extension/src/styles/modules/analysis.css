@@ -180,14 +180,14 @@
 
 .vn-claim-number {
   font-weight: 600;
-  font-size: 12px;
+  font-size: 13px;
   color: #6b7280;
 }
 
 .vn-claim-verdict-badge {
-  padding: 4px 8px;
+  padding: 4px 10px;
   border-radius: 12px;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
 }
 
@@ -196,7 +196,7 @@
 .vn-claim-verdict-badge.gray { background-color: #f3f4f6; color: #4b5563; }
 
 .vn-claim-text {
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.5;
   color: #374151;
   margin: 0 0 10px 0;

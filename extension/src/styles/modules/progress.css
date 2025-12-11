@@ -53,7 +53,7 @@
   position: relative;
   width: 100%;
   height: 8px; /* Thicker bar */
-  margin-bottom: 24px; /* Space for labels */
+  margin-bottom: 30px; /* Space for labels */
   background: var(--progress-border);
   border-radius: 4px; /* Adjusted radius for thicker bar */
 }
@@ -180,7 +180,7 @@
 /* Labels */
 .vn-progress-checkpoint-label {
   position: absolute;
-  top: 24px; /* Adjusted for larger dots */
+  top: 34px; /* Increased from 28px for more space */
   white-space: nowrap;
   font-size: 13px; /* Slightly larger font */
   color: var(--progress-text-light);
