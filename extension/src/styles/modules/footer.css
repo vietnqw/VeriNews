@@ -2,32 +2,48 @@
 .vn-modal-footer {
   background: #ffffff;
   border-top: 1px solid #e5e7eb;
-  padding: 20px 32px;
+  padding: 16px;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
   gap: 16px;
   flex-wrap: wrap;
+}
+
+@media (min-width: 640px) {
+  .vn-modal-footer {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 24px;
+  }
 }
 
 .vn-footer-left {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  text-align: center;
+}
+
+@media (min-width: 640px) {
+  .vn-footer-left {
+    text-align: left;
+  }
 }
 
 .vn-footer-info {
-  font-size: 13px;
-  color: #475569;
+  font-size: 12px;
+  color: #6b7280;
 }
 
 .vn-footer-label {
-  font-weight: 600;
-  color: #0f172a;
+  font-weight: 500;
+  color: #111827;
 }
 
 .vn-footer-disclaimer {
   font-size: 12px;
-  color: #94a3b8;
+  color: #6b7280;
   font-style: normal;
+  margin-top: 4px;
 }

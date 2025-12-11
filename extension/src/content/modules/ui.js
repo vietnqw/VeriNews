@@ -34,28 +34,32 @@ const VN_ICON_BUILDERS = {
     svg.appendChild(createSvgElement("circle", { cx: "12", cy: "7.5", r: "0.6", fill: "currentColor", stroke: "none" }));
   },
   link: (svg) => {
-    svg.appendChild(createSvgElement("path", { d: "M9.5 14.5l-1.5 1.5a3 3 0 1 1-4.2-4.2l2.8-2.8" }));
-    svg.appendChild(createSvgElement("path", { d: "M14.5 9.5l1.5-1.5a3 3 0 1 1 4.2 4.2l-2.8 2.8" }));
-    svg.appendChild(createSvgElement("line", { x1: "9", y1: "15", x2: "15", y2: "9" }));
+    // Material Symbols "link" icon - chain links
+    const path = createSvgElement("path", { d: "M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z" });
+    path.setAttribute("fill", "currentColor");
+    path.setAttribute("stroke", "none");
+    svg.appendChild(path);
   },
   checklist: (svg) => {
-    svg.appendChild(createSvgElement("rect", { x: "5", y: "5", width: "14", height: "14", rx: "2" }));
-    svg.appendChild(createSvgElement("polyline", { points: "7 9.5 8.7 11.2 11.2 8.7" }));
-    svg.appendChild(createSvgElement("line", { x1: "9", y1: "13", x2: "16", y2: "13" }));
-    svg.appendChild(createSvgElement("line", { x1: "9", y1: "16.5", x2: "16", y2: "16.5" }));
-    svg.appendChild(createSvgElement("circle", { cx: "7", cy: "16.5", r: "0.6", fill: "currentColor", stroke: "none" }));
+    // Material Symbols "checklist" icon - clipboard with checkmarks
+    const path = createSvgElement("path", { d: "M19 3h-4.18C14.4 1.84 13.3 1 12 1s-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm-2 14l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z" });
+    path.setAttribute("fill", "currentColor");
+    path.setAttribute("stroke", "none");
+    svg.appendChild(path);
   },
   analytics: (svg) => {
-    svg.appendChild(createSvgElement("line", { x1: "6", y1: "18", x2: "6", y2: "12" }));
-    svg.appendChild(createSvgElement("line", { x1: "12", y1: "18", x2: "12", y2: "8" }));
-    svg.appendChild(createSvgElement("line", { x1: "18", y1: "18", x2: "18", y2: "5" }));
-    svg.appendChild(createSvgElement("line", { x1: "4", y1: "18", x2: "20", y2: "18", "stroke-linecap": "butt" }));
+    // Material Symbols "analytics" icon - bar chart
+    const path = createSvgElement("path", { d: "M5 9.2h3V19H5V9.2zM10.6 5h2.8v14h-2.8V5zm5.6 8H19v6h-2.8v-6z" });
+    path.setAttribute("fill", "currentColor");
+    path.setAttribute("stroke", "none");
+    svg.appendChild(path);
   },
   article: (svg) => {
-    svg.appendChild(createSvgElement("rect", { x: "6", y: "4.5", width: "12", height: "15", rx: "2" }));
-    svg.appendChild(createSvgElement("line", { x1: "9", y1: "9", x2: "15", y2: "9" }));
-    svg.appendChild(createSvgElement("line", { x1: "9", y1: "12", x2: "15", y2: "12" }));
-    svg.appendChild(createSvgElement("line", { x1: "9", y1: "15", x2: "13", y2: "15" }));
+    // Material Symbols "article" icon - document
+    const path = createSvgElement("path", { d: "M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" });
+    path.setAttribute("fill", "currentColor");
+    path.setAttribute("stroke", "none");
+    svg.appendChild(path);
   },
   "chevron-down": (svg) => {
     svg.appendChild(createSvgElement("polyline", { points: "6 10 12 16 18 10" }));
@@ -235,14 +239,13 @@ function createProgressLoadingUI(progressTracker, onComplete, onError = null) {
 }
 
 /**
- * Displays a modal popup with the extracted content.
- * @param {string} content - The text content to display.
- * @param {object | null} apiResponse - The response from the API, or null for loading state.
- * @param {object | null} progressTracker - Optional progress tracker for SSE updates.
- * @param {Function | null} onComplete - Callback when progress completes (for streaming mode).
+ * Displays a modal popup with the extracted content or verification result.
+ * @param {string} content - Text content to verify.
+ * @param {object | null} apiResponse - Verification API response or null while loading.
+ * @param {object | null} progressTracker - Optional progress tracker for streaming mode.
+ * @param {Function | null} onComplete - Callback when streaming completes.
  */
 function showContentPopup(content, apiResponse, progressTracker = null, onComplete = null) {
-  // --- Create Popup Elements ---
   const overlay = document.createElement("div");
   overlay.className = "vn-modal-overlay";
 
@@ -250,64 +253,12 @@ function showContentPopup(content, apiResponse, progressTracker = null, onComple
   modal.className = "vn-modal-content";
 
   const closeButton = document.createElement("button");
-    closeButton.className = "vn-modal-close";
-    modal.appendChild(closeButton);
+  closeButton.className = "vn-modal-close";
+  modal.appendChild(closeButton);
 
-    // Helper for JS-based Tooltip (Fixed positioning to escape overflow)
-    let activeTooltip = null;
+  const { showTooltip, hideTooltip } = createTooltipManager();
 
-    function showTooltip(target, text) {
-      if (activeTooltip) activeTooltip.remove();
-
-      const tooltip = document.createElement("div");
-      tooltip.className = "vn-floating-tooltip";
-      // Allow basic HTML (e.g., <strong>) in tooltip content.
-      // Content comes from static strings in the extension, not user input.
-      tooltip.innerHTML = text;
-      document.body.appendChild(tooltip);
-      activeTooltip = tooltip;
-
-      const rect = target.getBoundingClientRect();
-      const tooltipRect = tooltip.getBoundingClientRect();
-
-      // Calculate position (centered above the element)
-      let top = rect.top - tooltipRect.height - 10; // 10px gap
-      let left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
-
-      // Prevent going off-screen (left/right)
-      if (left < 10) left = 10;
-      if (left + tooltipRect.width > window.innerWidth - 10) {
-        left = window.innerWidth - tooltipRect.width - 10;
-      }
-
-      // Prevent going off-screen (top) -> flip to bottom if needed
-      if (top < 10) {
-         top = rect.bottom + 10;
-         tooltip.classList.add("bottom");
-      }
-
-      tooltip.style.top = `${top}px`;
-      tooltip.style.left = `${left}px`;
-
-      // Trigger animation
-      requestAnimationFrame(() => {
-        tooltip.classList.add("visible");
-      });
-    }
-
-    function hideTooltip() {
-      if (activeTooltip) {
-        activeTooltip.classList.remove("visible");
-        const tooltipToRemove = activeTooltip;
-        activeTooltip = null;
-        setTimeout(() => {
-          if (tooltipToRemove.parentNode) tooltipToRemove.remove();
-        }, 200); // Wait for fade out
-      }
-    }
-
-    // Helper function to create consistent collapsible sections
-  function createCollapsibleSection(title, contentElement, isCollapsed = true) {
+  const createCollapsibleSection = (title, contentElement, isCollapsed = true) => {
     const iconMap = {
       "Bài báo liên quan": "link",
       "Điểm chi tiết": "checklist",
@@ -317,9 +268,7 @@ function showContentPopup(content, apiResponse, progressTracker = null, onComple
 
     const section = document.createElement("details");
     section.className = "vn-details-section";
-    if (!isCollapsed) {
-      section.setAttribute("open", "");
-    }
+    if (!isCollapsed) section.setAttribute("open", "");
 
     const summary = document.createElement("summary");
     summary.className = "vn-details-summary";
@@ -328,7 +277,6 @@ function showContentPopup(content, apiResponse, progressTracker = null, onComple
     summaryLeft.className = "vn-details-summary-left";
 
     const icon = createIcon(iconMap[title] || "info", "vn-details-icon");
-
     const titleSpan = document.createElement("span");
     titleSpan.className = "vn-details-title";
     titleSpan.innerText = title;
@@ -337,7 +285,6 @@ function showContentPopup(content, apiResponse, progressTracker = null, onComple
     summaryLeft.appendChild(titleSpan);
 
     const chevron = createIcon("chevron-down", "vn-details-chevron");
-
     summary.appendChild(summaryLeft);
     summary.appendChild(chevron);
 
@@ -348,489 +295,25 @@ function showContentPopup(content, apiResponse, progressTracker = null, onComple
     section.appendChild(summary);
     section.appendChild(contentWrapper);
     return section;
-  }
+  };
 
   if (!apiResponse) {
-    // Loading state with progress tracking
-    if (progressTracker) {
-      // Use enhanced progress UI with stages
-      const progressContainer = createProgressLoadingUI(progressTracker, onComplete);
-      modal.appendChild(progressContainer);
-    } else {
-      // Fallback to simple spinner
-      const loadingContainer = document.createElement("div");
-      loadingContainer.className = "vn-loading-container";
-
-      const spinnerWrapper = document.createElement("div");
-      spinnerWrapper.className = "vn-loading-spinner-wrapper";
-
-      const spinnerTrack = document.createElement("div");
-      spinnerTrack.className = "vn-loading-spinner-track";
-
-      const spinnerIndicator = document.createElement("div");
-      spinnerIndicator.className = "vn-loading-spinner-indicator";
-
-      spinnerWrapper.appendChild(spinnerTrack);
-      spinnerWrapper.appendChild(spinnerIndicator);
-
-      const loadingTitle = document.createElement("h1");
-      loadingTitle.className = "vn-loading-title";
-      loadingTitle.innerText = "Đang xác minh nội dung...";
-
-      const loadingDescription = document.createElement("p");
-      loadingDescription.className = "vn-loading-description";
-      loadingDescription.innerText = "Vui lòng chờ trong giây lát. Quá trình này có thể mất một chút thời gian.";
-
-      loadingContainer.appendChild(spinnerWrapper);
-      loadingContainer.appendChild(loadingTitle);
-      loadingContainer.appendChild(loadingDescription);
-      modal.appendChild(loadingContainer);
-    }
+    renderLoadingState({ modal, progressTracker, onComplete });
   } else if (apiResponse.error) {
-    // --- Error State ---
-    const errorContainer = document.createElement("div");
-    errorContainer.className = "vn-error-container";
-
-    const errorTitle = document.createElement("h3");
-    errorTitle.className = "vn-error-title";
-    errorTitle.innerText = "Xác minh thất bại";
-
-    const errorMessage = document.createElement("p");
-    errorMessage.className = "vn-error-message";
-    errorMessage.innerText = apiResponse.message;
-
-    errorContainer.appendChild(errorTitle);
-    errorContainer.appendChild(errorMessage);
-    modal.appendChild(errorContainer);
+    renderErrorState({ modal, message: apiResponse.message });
   } else {
-    const scorePercent = Math.round(apiResponse.final_score * 100);
-    const decisionMap = {
-      "Fully Supported": "Hoàn toàn chính xác",
-      "Partially Supported": "Đúng một phần",
-      "Refuted": "Sai lệch/Giả mạo",
-      "Not Enough Info": "Chưa đủ thông tin",
-      "Verified": "Đã xác minh",
-      "Misleading/False": "Sai lệch/Giả mạo",
-      "Out of Context": "Sai ngữ cảnh",
-      "Unverified": "Chưa xác minh"
-    };
-    const themeMap = {
-      green: { className: "success", icon: "success" },
-      yellow: { className: "warning", icon: "warning" },
-      red: { className: "danger", icon: "danger" },
-      gray: { className: "neutral", icon: "info" }
-    };
-    const heroTheme = themeMap[apiResponse.flag] || themeMap.gray;
-    const decisionLabel = decisionMap[apiResponse.overall_decision] || "Không rõ";
-
-    const heroSection = document.createElement("section");
-    heroSection.className = `vn-result-hero ${heroTheme.className}`;
-
-    const heroBadge = document.createElement("div");
-    heroBadge.className = "vn-hero-icon-circle";
-    const heroIcon = createIcon(heroTheme.icon, "vn-icon-hero");
-    heroBadge.appendChild(heroIcon);
-
-    const heroTitle = document.createElement("h1");
-    heroTitle.className = "vn-hero-title";
-    heroTitle.innerText = decisionLabel;
-
-    const heroConfidence = document.createElement("p");
-    heroConfidence.className = "vn-hero-confidence";
-    heroConfidence.innerText = `Độ tin cậy ${scorePercent}%`;
-
-    heroSection.appendChild(heroBadge);
-    heroSection.appendChild(heroTitle);
-    heroSection.appendChild(heroConfidence);
-    modal.appendChild(heroSection);
-
-    const sectionsContainer = document.createElement("div");
-    sectionsContainer.className = "vn-result-body";
-
-    const explanationSection = document.createElement("section");
-    explanationSection.className = "vn-result-section";
-
-    const explanationHeading = document.createElement("h2");
-    explanationHeading.className = "vn-section-heading";
-    explanationHeading.innerText = "Giải thích";
-
-    const explanationText = document.createElement("p");
-    explanationText.className = "vn-section-text";
-    explanationText.innerText =
-      apiResponse.explanation && apiResponse.explanation.trim() !== ""
-        ? apiResponse.explanation
-        : "Hệ thống chưa cung cấp giải thích chi tiết cho kết quả này.";
-
-    explanationSection.appendChild(explanationHeading);
-    explanationSection.appendChild(explanationText);
-    sectionsContainer.appendChild(explanationSection);
-
-    // --- Bài báo liên quan ---
-    const articlesContainer = document.createElement("div");
-    articlesContainer.className = "vn-articles-section";
-    const hasArticles = apiResponse.matched_articles && apiResponse.matched_articles.length > 0;
-
-    if (hasArticles) {
-      const articlesList = document.createElement("div");
-      articlesList.className = "vn-related-list";
-      apiResponse.matched_articles.forEach((article) => {
-        const articleCard = document.createElement("a");
-        articleCard.href = article.url;
-        articleCard.target = "_blank";
-        articleCard.rel = "noopener noreferrer";
-        articleCard.className = "vn-related-article";
-
-        const cardText = document.createElement("div");
-        cardText.className = "vn-related-text";
-
-        const title = document.createElement("p");
-        title.className = "vn-related-title";
-        title.innerText = article.title;
-
-        const meta = document.createElement("p");
-        meta.className = "vn-related-meta";
-        const accuracy = Math.round(article.similarity * 100);
-        meta.innerText = `${article.source} - Mức độ liên quan ${accuracy}%`;
-
-        cardText.appendChild(title);
-        cardText.appendChild(meta);
-
-        const arrow = createIcon("chevron-right", "vn-related-chevron");
-
-        articleCard.appendChild(cardText);
-        articleCard.appendChild(arrow);
-        articlesList.appendChild(articleCard);
-      });
-      articlesContainer.appendChild(articlesList);
-    } else {
-      const emptyMessage = document.createElement("p");
-      emptyMessage.className = "vn-empty-message";
-      emptyMessage.innerText = "Không tìm thấy bài báo liên quan.";
-      articlesContainer.appendChild(emptyMessage);
-    }
-
-    sectionsContainer.appendChild(createCollapsibleSection("Bài báo liên quan", articlesContainer, false));
-
-    // --- Điểm chi tiết ---
-    if (apiResponse.per_criterion_scores) {
-      const scores = apiResponse.per_criterion_scores;
-      const hasScores = scores.evidence_quality > 0 || scores.source_agreement > 0 ||
-                       scores.source_quantity > 0 || scores.temporal_relevance > 0;
-
-      if (hasScores) {
-        const criterionDetails = document.createElement("div");
-
-        const scoreItems = [
-          {
-            label: "Chất lượng bằng chứng",
-            value: scores.evidence_quality,
-            description: "Mức độ chắc chắn của hệ thống khi đưa ra kết luận về độ chính xác của các luận điểm trong bài đăng khi so sánh với các nguồn tin chính thống. Điểm cao nghĩa là các luận điểm được đánh giá với độ chính xác cao."
-          },
-          {
-            label: "Mức độ đồng thuận nguồn tin",
-            value: scores.source_agreement,
-            description: "Cho biết các bài báo khác nhau đang cùng thống nhất về các luận điểm hay mâu thuẫn nhau. Điểm cao nghĩa là đa số nguồn tin uy tín cùng đưa ra thông tin giống nhau về các luận điểm đó."
-          },
-          {
-            label: "Số lượng nguồn tin",
-            value: scores.source_quantity,
-            description: "Cho biết số lượng nguồn tin đáng tin cậy đã được sử dụng để xác minh. Điểm cao nghĩa là có nhiều nguồn tin khác nhau cùng cung cấp thông tin về các luận điểm này."
-          },
-          {
-            label: "Độ mới của bài báo",
-            value: scores.temporal_relevance,
-            description: "Đo độ mới của các bài báo dùng để kiểm chứng. Điểm cao nghĩa là hệ thống chủ yếu dựa vào các bài báo gần đây, phù hợp với bối cảnh hiện tại."
-          }
-        ];
-
-        scoreItems.forEach(item => {
-          const scoreRow = document.createElement("div");
-          scoreRow.className = "vn-score-row";
-
-          const scoreRowLabel = document.createElement("span");
-          scoreRowLabel.className = "vn-score-row-label";
-          scoreRowLabel.innerText = item.label;
-
-          scoreRowLabel.addEventListener("mouseenter", () => showTooltip(scoreRowLabel, item.description));
-          scoreRowLabel.addEventListener("mouseleave", hideTooltip);
-          scoreRowLabel.addEventListener("click", (e) => {
-             e.stopPropagation();
-             showTooltip(scoreRowLabel, item.description);
-          });
-
-          const scoreRowValue = document.createElement("span");
-          scoreRowValue.className = "vn-score-row-value";
-          scoreRowValue.innerText = `${Math.round(item.value * 100)}%`;
-
-          scoreRow.appendChild(scoreRowLabel);
-          scoreRow.appendChild(scoreRowValue);
-          criterionDetails.appendChild(scoreRow);
-        });
-
-        sectionsContainer.appendChild(createCollapsibleSection("Điểm chi tiết", criterionDetails, false));
-      }
-    }
-
-    // --- Phân tích chi tiết ---
-    if (apiResponse.claim_verdicts && apiResponse.claim_verdicts.length > 0) {
-      const claimVerdictsList = document.createElement("div");
-      claimVerdictsList.className = "vn-claim-verdicts-list";
-
-      const verdictInfo = {
-        "SUPPORTED": { text: "Được hỗ trợ", color: "green", icon: "✓" },
-        "REFUTED": { text: "Bị bác bỏ", color: "red", icon: "✗" },
-        "NOT_ENOUGH_INFO": { text: "Chưa đủ thông tin", color: "gray", icon: "?" }
-      };
-
-      apiResponse.claim_verdicts.forEach((cv, index) => {
-        const claimItem = document.createElement("div");
-        claimItem.className = "vn-claim-verdict-item";
-
-        const claimHeader = document.createElement("div");
-        claimHeader.className = "vn-claim-header";
-
-        const claimNumber = document.createElement("span");
-        claimNumber.className = "vn-claim-number";
-        claimNumber.innerText = `Luận điểm ${index + 1}:`;
-
-        const claimVerdictBadge = document.createElement("span");
-        const info = verdictInfo[cv.verdict] || { text: cv.verdict, color: "gray", icon: "?" };
-        claimVerdictBadge.className = `vn-claim-verdict-badge ${info.color}`;
-        claimVerdictBadge.innerHTML = `${info.icon} ${info.text} (${Math.round(cv.confidence * 100)}%)`;
-
-        claimHeader.appendChild(claimNumber);
-        claimHeader.appendChild(claimVerdictBadge);
-
-        const claimText = document.createElement("p");
-        claimText.className = "vn-claim-text";
-        claimText.innerText = cv.claim_text;
-
-        claimItem.appendChild(claimHeader);
-        claimItem.appendChild(claimText);
-
-        if (cv.supporting_evidence && cv.supporting_evidence.length > 0) {
-          const supportingContainer = document.createElement("div");
-          supportingContainer.className = "vn-evidence-container supporting";
-          const supportingTitle = document.createElement("h5");
-          supportingTitle.className = "vn-evidence-title";
-          supportingTitle.innerText = "📗 Bằng chứng hỗ trợ:";
-          supportingContainer.appendChild(supportingTitle);
-          cv.supporting_evidence.forEach(evidence => {
-            const evidenceItem = document.createElement("div");
-            evidenceItem.className = "vn-evidence-item";
-
-            const articleHeader = document.createElement("div");
-            articleHeader.className = "vn-evidence-article-header";
-
-            const articleLink = document.createElement("a");
-            articleLink.href = evidence.article_url || "#";
-            articleLink.target = "_blank";
-            articleLink.className = "vn-evidence-article-title";
-            articleLink.innerText = evidence.article_title || "Bài báo";
-
-            const articleMeta = document.createElement("span");
-            articleMeta.className = "vn-evidence-source";
-            articleMeta.innerText = `${evidence.source_name}${evidence.published_at ? ' - ' + new Date(evidence.published_at).toLocaleDateString('vi-VN') : ''}`;
-
-            articleHeader.appendChild(articleLink);
-            articleHeader.appendChild(articleMeta);
-            evidenceItem.appendChild(articleHeader);
-
-            if (evidence.overall_reasoning) {
-              const reasoning = document.createElement("p");
-              reasoning.className = "vn-evidence-reasoning";
-              reasoning.innerText = evidence.overall_reasoning;
-              evidenceItem.appendChild(reasoning);
-            }
-
-            if (evidence.evidence_spans && evidence.evidence_spans.length > 0) {
-              const spansContainer = document.createElement("div");
-              spansContainer.className = "vn-evidence-spans";
-
-              evidence.evidence_spans.forEach((span) => {
-                const spanItem = document.createElement("div");
-                spanItem.className = "vn-evidence-span-item";
-
-                const spanQuote = document.createElement("blockquote");
-                spanQuote.className = "vn-evidence-quote";
-                spanQuote.innerText = `"${span.text}"`;
-
-                const spanReasoning = document.createElement("p");
-                spanReasoning.className = "vn-span-reasoning";
-                spanReasoning.innerText = `→ ${span.reasoning}`;
-
-                spanItem.appendChild(spanQuote);
-                spanItem.appendChild(spanReasoning);
-                spansContainer.appendChild(spanItem);
-              });
-
-              evidenceItem.appendChild(spansContainer);
-            }
-
-            supportingContainer.appendChild(evidenceItem);
-          });
-          claimItem.appendChild(supportingContainer);
-        }
-
-        if (cv.refuting_evidence && cv.refuting_evidence.length > 0) {
-          const refutingContainer = document.createElement("div");
-          refutingContainer.className = "vn-evidence-container refuting";
-          const refutingTitle = document.createElement("h5");
-          refutingTitle.className = "vn-evidence-title";
-          refutingTitle.innerText = "📕 Bằng chứng bác bỏ:";
-          refutingContainer.appendChild(refutingTitle);
-          cv.refuting_evidence.forEach(evidence => {
-            const evidenceItem = document.createElement("div");
-            evidenceItem.className = "vn-evidence-item";
-
-            const articleHeader = document.createElement("div");
-            articleHeader.className = "vn-evidence-article-header";
-
-            const articleLink = document.createElement("a");
-            articleLink.href = evidence.article_url || "#";
-            articleLink.target = "_blank";
-            articleLink.className = "vn-evidence-article-title";
-            articleLink.innerText = evidence.article_title || "Bài báo";
-
-            const articleMeta = document.createElement("span");
-            articleMeta.className = "vn-evidence-source";
-            articleMeta.innerText = `${evidence.source_name}${evidence.published_at ? ' - ' + new Date(evidence.published_at).toLocaleDateString('vi-VN') : ''}`;
-
-            articleHeader.appendChild(articleLink);
-            articleHeader.appendChild(articleMeta);
-            evidenceItem.appendChild(articleHeader);
-
-            if (evidence.overall_reasoning) {
-              const reasoning = document.createElement("p");
-              reasoning.className = "vn-evidence-reasoning";
-              reasoning.innerText = evidence.overall_reasoning;
-              evidenceItem.appendChild(reasoning);
-            }
-
-            if (evidence.evidence_spans && evidence.evidence_spans.length > 0) {
-              const spansContainer = document.createElement("div");
-              spansContainer.className = "vn-evidence-spans";
-
-              evidence.evidence_spans.forEach((span) => {
-                const spanItem = document.createElement("div");
-                spanItem.className = "vn-evidence-span-item";
-
-                const spanQuote = document.createElement("blockquote");
-                spanQuote.className = "vn-evidence-quote";
-                spanQuote.innerText = `"${span.text}"`;
-
-                const spanReasoning = document.createElement("p");
-                spanReasoning.className = "vn-span-reasoning";
-                spanReasoning.innerText = `→ ${span.reasoning}`;
-
-                spanItem.appendChild(spanQuote);
-                spanItem.appendChild(spanReasoning);
-                spansContainer.appendChild(spanItem);
-              });
-
-              evidenceItem.appendChild(spansContainer);
-            }
-
-            refutingContainer.appendChild(evidenceItem);
-          });
-          claimItem.appendChild(refutingContainer);
-        }
-
-        claimVerdictsList.appendChild(claimItem);
-      });
-
-      sectionsContainer.appendChild(createCollapsibleSection("Phân tích chi tiết", claimVerdictsList, true));
-    }
-
-    // --- Nội dung bài đăng ---
-    const contentDiv = document.createElement("div");
-    contentDiv.className = "vn-article-content-text";
-    const contentP = document.createElement("p");
-    contentP.innerText = content;
-    contentDiv.appendChild(contentP);
-    sectionsContainer.appendChild(createCollapsibleSection("Nội dung bài đăng", contentDiv, true));
-
-    if (apiResponse.contextual_judgment && apiResponse.contextual_judgment.is_out_of_context) {
-      const contextContainer = document.createElement("div");
-      contextContainer.className = "vn-context-banner";
-      const contextTitle = document.createElement("h4");
-      contextTitle.className = "vn-context-title";
-      contextTitle.innerText = "⚠ Cảnh báo ngữ cảnh";
-      const contextReasoning = document.createElement("p");
-      contextReasoning.className = "vn-context-reasoning";
-      contextReasoning.innerText = apiResponse.contextual_judgment.reasoning;
-      contextContainer.appendChild(contextTitle);
-      contextContainer.appendChild(contextReasoning);
-      sectionsContainer.appendChild(contextContainer);
-    }
-
-    modal.appendChild(sectionsContainer);
+    renderResultView({
+      modal,
+      content,
+      apiResponse,
+      createCollapsibleSection,
+      showTooltip,
+      hideTooltip
+    });
   }
 
-  // --- Footer ---
   if (apiResponse && !apiResponse.error && apiResponse._veriNewsMetadata) {
-    const footer = document.createElement("div");
-    footer.className = "vn-modal-footer";
-
-    const footerLeft = document.createElement("div");
-    footerLeft.className = "vn-footer-left";
-
-    const footerInfo = document.createElement("div");
-    footerInfo.className = "vn-footer-info";
-    const timeSec = (apiResponse._veriNewsMetadata.total_time_ms / 1000).toFixed(2);
-    footerInfo.innerHTML = `<span class="vn-footer-label">Thời gian:</span> ${timeSec}s`;
-
-    const footerDisclaimer = document.createElement("div");
-    footerDisclaimer.className = "vn-footer-disclaimer";
-    footerDisclaimer.innerText = "⚡ Kết quả phân tích bởi AI chỉ mang tính tham khảo";
-
-    footerLeft.appendChild(footerInfo);
-    footerLeft.appendChild(footerDisclaimer);
-    footer.appendChild(footerLeft);
-
-    const refreshButton = document.createElement("button");
-    refreshButton.className = "vn-refresh-button";
-    refreshButton.innerHTML = `<span class="vn-refresh-icon">↻</span> Xác minh lại`;
-
-    refreshButton.addEventListener("click", async () => {
-      refreshButton.disabled = true;
-      refreshButton.innerText = "Đang xác minh...";
-      try {
-        // Create progress tracker for streaming
-        const progressTracker = createProgressTracker(
-          (event) => console.log("Stage update:", event),
-          (progress) => console.log("Progress:", progress),
-          null, // onComplete will be handled by createProgressLoadingUI
-          (error) => {
-            // Don't remove modal overlay - let error UI display inside the modal
-            console.error("Verification error:", error);
-            refreshButton.disabled = false;
-            refreshButton.innerText = "Thất bại - Thử lại";
-          }
-        );
-
-        // Show progress UI with completion handler
-        document.querySelector(".vn-modal-overlay")?.remove();
-        showContentPopup(content, null, progressTracker, (response) => {
-          // Results received, remove progress modal and show results
-          document.querySelector(".vn-modal-overlay")?.remove();
-          document.querySelector(".vn-modal-content")?.remove();
-          showContentPopup(content, response);
-          refreshButton.disabled = false;
-          refreshButton.innerText = "Xác minh lại";
-        });
-
-        // Start streaming verification
-        progressTracker.startStreaming(content, true);
-      } catch (error) {
-        console.error(error);
-        refreshButton.disabled = false;
-        refreshButton.innerText = "Thất bại - Thử lại";
-      }
-    });
-
-    footer.appendChild(refreshButton);
-    modal.appendChild(footer);
+    modal.appendChild(createFooter({ apiResponse, content }));
   }
 
   overlay.appendChild(modal);
@@ -839,6 +322,492 @@ function showContentPopup(content, apiResponse, progressTracker = null, onComple
   const closeModal = () => document.body.removeChild(overlay);
   closeButton.addEventListener("click", closeModal);
   overlay.addEventListener("click", (e) => { if (e.target === overlay) closeModal(); });
+}
+
+function createTooltipManager() {
+  let activeTooltip = null;
+
+  const showTooltip = (target, text) => {
+    if (activeTooltip) activeTooltip.remove();
+
+    const tooltip = document.createElement("div");
+    tooltip.className = "vn-floating-tooltip";
+    tooltip.innerHTML = text;
+    document.body.appendChild(tooltip);
+    activeTooltip = tooltip;
+
+    const rect = target.getBoundingClientRect();
+    const tooltipRect = tooltip.getBoundingClientRect();
+
+    let top = rect.top - tooltipRect.height - 10;
+    let left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
+
+    if (left < 10) left = 10;
+    if (left + tooltipRect.width > window.innerWidth - 10) {
+      left = window.innerWidth - tooltipRect.width - 10;
+    }
+
+    if (top < 10) {
+      top = rect.bottom + 10;
+      tooltip.classList.add("bottom");
+    }
+
+    tooltip.style.top = `${top}px`;
+    tooltip.style.left = `${left}px`;
+
+    requestAnimationFrame(() => tooltip.classList.add("visible"));
+  };
+
+  const hideTooltip = () => {
+    if (!activeTooltip) return;
+    activeTooltip.classList.remove("visible");
+    const tooltipToRemove = activeTooltip;
+    activeTooltip = null;
+    setTimeout(() => { if (tooltipToRemove.parentNode) tooltipToRemove.remove(); }, 200);
+  };
+
+  return { showTooltip, hideTooltip };
+}
+
+function renderLoadingState({ modal, progressTracker, onComplete }) {
+  if (progressTracker) {
+    const progressContainer = createProgressLoadingUI(progressTracker, onComplete);
+    modal.appendChild(progressContainer);
+    return;
+  }
+
+  const loadingContainer = document.createElement("div");
+  loadingContainer.className = "vn-loading-container";
+
+  const spinnerWrapper = document.createElement("div");
+  spinnerWrapper.className = "vn-loading-spinner-wrapper";
+
+  const spinnerTrack = document.createElement("div");
+  spinnerTrack.className = "vn-loading-spinner-track";
+
+  const spinnerIndicator = document.createElement("div");
+  spinnerIndicator.className = "vn-loading-spinner-indicator";
+
+  spinnerWrapper.appendChild(spinnerTrack);
+  spinnerWrapper.appendChild(spinnerIndicator);
+
+  const loadingTitle = document.createElement("h1");
+  loadingTitle.className = "vn-loading-title";
+  loadingTitle.innerText = "Đang xác minh nội dung...";
+
+  const loadingDescription = document.createElement("p");
+  loadingDescription.className = "vn-loading-description";
+  loadingDescription.innerText = "Vui lòng chờ trong giây lát. Quá trình này có thể mất một chút thời gian.";
+
+  loadingContainer.appendChild(spinnerWrapper);
+  loadingContainer.appendChild(loadingTitle);
+  loadingContainer.appendChild(loadingDescription);
+  modal.appendChild(loadingContainer);
+}
+
+function renderErrorState({ modal, message }) {
+  const errorContainer = document.createElement("div");
+  errorContainer.className = "vn-error-container";
+
+  const errorTitle = document.createElement("h3");
+  errorTitle.className = "vn-error-title";
+  errorTitle.innerText = "Xác minh thất bại";
+
+  const errorMessage = document.createElement("p");
+  errorMessage.className = "vn-error-message";
+  errorMessage.innerText = message;
+
+  errorContainer.appendChild(errorTitle);
+  errorContainer.appendChild(errorMessage);
+  modal.appendChild(errorContainer);
+}
+
+function renderResultView({ modal, content, apiResponse, createCollapsibleSection, showTooltip, hideTooltip }) {
+  const hero = createHeroSection(apiResponse);
+  const sections = document.createElement("div");
+  sections.className = "vn-result-body";
+
+  sections.appendChild(createExplanationSection(apiResponse));
+  sections.appendChild(createArticlesSection(apiResponse, createCollapsibleSection));
+
+  const scoresSection = createScoresSection(apiResponse, createCollapsibleSection, showTooltip, hideTooltip);
+  if (scoresSection) sections.appendChild(scoresSection);
+
+  const claimsSection = createClaimAnalysisSection(apiResponse, createCollapsibleSection);
+  if (claimsSection) sections.appendChild(claimsSection);
+
+  sections.appendChild(createContentSection(content, createCollapsibleSection));
+
+  const contextBanner = createContextBanner(apiResponse);
+  if (contextBanner) sections.appendChild(contextBanner);
+
+  modal.appendChild(hero);
+  modal.appendChild(sections);
+}
+
+function createHeroSection(apiResponse) {
+  const scorePercent = Math.round(apiResponse.final_score * 100);
+  const decisionMap = {
+    "Fully Supported": "Hoàn toàn chính xác",
+    "Partially Supported": "Đúng một phần",
+    "Refuted": "Sai lệch/Giả mạo",
+    "Not Enough Info": "Chưa đủ thông tin",
+    "Verified": "Đã xác minh",
+    "Misleading/False": "Sai lệch/Giả mạo",
+    "Out of Context": "Sai ngữ cảnh",
+    "Unverified": "Chưa xác minh"
+  };
+  const themeMap = {
+    green: { className: "success", icon: "success" },
+    yellow: { className: "warning", icon: "warning" },
+    red: { className: "danger", icon: "danger" },
+    gray: { className: "neutral", icon: "info" }
+  };
+
+  const heroTheme = themeMap[apiResponse.flag] || themeMap.gray;
+  const decisionLabel = decisionMap[apiResponse.overall_decision] || "Không rõ";
+
+  const heroSection = document.createElement("section");
+  heroSection.className = `vn-result-hero ${heroTheme.className}`;
+
+  const heroBadge = document.createElement("div");
+  heroBadge.className = "vn-hero-icon-circle";
+  const heroIcon = createIcon(heroTheme.icon, "vn-icon-hero");
+  heroBadge.appendChild(heroIcon);
+
+  const heroTitle = document.createElement("h1");
+  heroTitle.className = "vn-hero-title";
+  heroTitle.innerText = decisionLabel;
+
+  const heroConfidence = document.createElement("p");
+  heroConfidence.className = "vn-hero-confidence";
+  heroConfidence.innerText = `Độ tin cậy ${scorePercent}%`;
+
+  heroSection.appendChild(heroBadge);
+  heroSection.appendChild(heroTitle);
+  heroSection.appendChild(heroConfidence);
+  return heroSection;
+}
+
+function createExplanationSection(apiResponse) {
+  const section = document.createElement("section");
+  section.className = "vn-result-section";
+
+  const heading = document.createElement("h2");
+  heading.className = "vn-section-heading";
+  heading.innerText = "Giải thích";
+
+  const text = document.createElement("p");
+  text.className = "vn-section-text";
+  text.innerText = apiResponse.explanation && apiResponse.explanation.trim() !== ""
+    ? apiResponse.explanation
+    : "Hệ thống chưa cung cấp giải thích chi tiết cho kết quả này.";
+
+  section.appendChild(heading);
+  section.appendChild(text);
+  return section;
+}
+
+function createArticlesSection(apiResponse, createCollapsibleSection) {
+  const container = document.createElement("div");
+  container.className = "vn-articles-section";
+  const hasArticles = apiResponse.matched_articles && apiResponse.matched_articles.length > 0;
+
+  if (hasArticles) {
+    const list = document.createElement("div");
+    list.className = "vn-related-list";
+    apiResponse.matched_articles.forEach((article) => {
+      const articleCard = document.createElement("a");
+      articleCard.href = article.url;
+      articleCard.target = "_blank";
+      articleCard.rel = "noopener noreferrer";
+      articleCard.className = "vn-related-article";
+
+      const cardText = document.createElement("div");
+      cardText.className = "vn-related-text";
+
+      const title = document.createElement("p");
+      title.className = "vn-related-title";
+      title.innerText = article.title;
+
+      const meta = document.createElement("p");
+      meta.className = "vn-related-meta";
+      const accuracy = Math.round(article.similarity * 100);
+      meta.innerText = `${article.source} - Mức độ liên quan ${accuracy}%`;
+
+      cardText.appendChild(title);
+      cardText.appendChild(meta);
+
+      const arrow = createIcon("chevron-right", "vn-related-chevron");
+
+      articleCard.appendChild(cardText);
+      articleCard.appendChild(arrow);
+      list.appendChild(articleCard);
+    });
+    container.appendChild(list);
+  } else {
+    const emptyMessage = document.createElement("p");
+    emptyMessage.className = "vn-empty-message";
+    emptyMessage.innerText = "Không tìm thấy bài báo liên quan.";
+    container.appendChild(emptyMessage);
+  }
+
+  return createCollapsibleSection("Bài báo liên quan", container, false);
+}
+
+function createScoresSection(apiResponse, createCollapsibleSection, showTooltip, hideTooltip) {
+  if (!apiResponse.per_criterion_scores) return null;
+  const scores = apiResponse.per_criterion_scores;
+  const hasScores = scores.evidence_quality > 0 || scores.source_agreement > 0 ||
+    scores.source_quantity > 0 || scores.temporal_relevance > 0;
+  if (!hasScores) return null;
+
+  const criterionDetails = document.createElement("div");
+  const scoreItems = [
+    {
+      label: "Chất lượng bằng chứng",
+      value: scores.evidence_quality,
+      description: "Mức độ chắc chắn của hệ thống khi đưa ra kết luận về độ chính xác của các luận điểm trong bài đăng khi so sánh với các nguồn tin chính thống. Điểm cao nghĩa là các luận điểm được đánh giá với độ chính xác cao."
+    },
+    {
+      label: "Mức độ đồng thuận nguồn tin",
+      value: scores.source_agreement,
+      description: "Cho biết các bài báo khác nhau đang cùng thống nhất về các luận điểm hay mâu thuẫn nhau. Điểm cao nghĩa là đa số nguồn tin uy tín cùng đưa ra thông tin giống nhau về các luận điểm đó."
+    },
+    {
+      label: "Số lượng nguồn tin",
+      value: scores.source_quantity,
+      description: "Cho biết số lượng nguồn tin đáng tin cậy đã được sử dụng để xác minh. Điểm cao nghĩa là có nhiều nguồn tin khác nhau cùng cung cấp thông tin về các luận điểm này."
+    },
+    {
+      label: "Độ mới của bài báo",
+      value: scores.temporal_relevance,
+      description: "Đo độ mới của các bài báo dùng để kiểm chứng. Điểm cao nghĩa là hệ thống chủ yếu dựa vào các bài báo gần đây, phù hợp với bối cảnh hiện tại."
+    }
+  ];
+
+  scoreItems.forEach(item => {
+    const row = document.createElement("div");
+    row.className = "vn-score-row";
+
+    const label = document.createElement("span");
+    label.className = "vn-score-row-label";
+    label.innerText = item.label;
+    label.addEventListener("mouseenter", () => showTooltip(label, item.description));
+    label.addEventListener("mouseleave", hideTooltip);
+    label.addEventListener("click", (e) => { e.stopPropagation(); showTooltip(label, item.description); });
+
+    const value = document.createElement("span");
+    value.className = "vn-score-row-value";
+    value.innerText = `${Math.round(item.value * 100)}%`;
+
+    row.appendChild(label);
+    row.appendChild(value);
+    criterionDetails.appendChild(row);
+  });
+
+  return createCollapsibleSection("Điểm chi tiết", criterionDetails, false);
+}
+
+function createClaimAnalysisSection(apiResponse, createCollapsibleSection) {
+  if (!apiResponse.claim_verdicts || apiResponse.claim_verdicts.length === 0) return null;
+
+  const verdictInfo = {
+    "SUPPORTED": { text: "Được hỗ trợ", color: "green", icon: "✓" },
+    "REFUTED": { text: "Bị bác bỏ", color: "red", icon: "✗" },
+    "NOT_ENOUGH_INFO": { text: "Chưa đủ thông tin", color: "gray", icon: "?" }
+  };
+
+  const list = document.createElement("div");
+  list.className = "vn-claim-verdicts-list";
+
+  apiResponse.claim_verdicts.forEach((cv, index) => {
+    const item = document.createElement("div");
+    item.className = "vn-claim-verdict-item";
+
+    const header = document.createElement("div");
+    header.className = "vn-claim-header";
+
+    const number = document.createElement("span");
+    number.className = "vn-claim-number";
+    number.innerText = `Luận điểm ${index + 1}:`;
+
+    const badge = document.createElement("span");
+    const info = verdictInfo[cv.verdict] || { text: cv.verdict, color: "gray", icon: "?" };
+    badge.className = `vn-claim-verdict-badge ${info.color}`;
+    badge.innerHTML = `${info.icon} ${info.text} (${Math.round(cv.confidence * 100)}%)`;
+
+    header.appendChild(number);
+    header.appendChild(badge);
+
+    const claimText = document.createElement("p");
+    claimText.className = "vn-claim-text";
+    claimText.innerText = cv.claim_text;
+
+    item.appendChild(header);
+    item.appendChild(claimText);
+
+    appendEvidenceSection(item, cv.supporting_evidence, "supporting", "📗 Bằng chứng hỗ trợ:");
+    appendEvidenceSection(item, cv.refuting_evidence, "refuting", "📕 Bằng chứng bác bỏ:");
+
+    list.appendChild(item);
+  });
+
+  return createCollapsibleSection("Phân tích chi tiết", list, true);
+}
+
+function appendEvidenceSection(parent, evidences, type, titleText) {
+  if (!evidences || evidences.length === 0) return;
+
+  const container = document.createElement("div");
+  container.className = `vn-evidence-container ${type}`;
+
+  const title = document.createElement("h5");
+  title.className = "vn-evidence-title";
+  title.innerText = titleText;
+  container.appendChild(title);
+
+  evidences.forEach(evidence => {
+    const evidenceItem = document.createElement("div");
+    evidenceItem.className = "vn-evidence-item";
+
+    const articleHeader = document.createElement("div");
+    articleHeader.className = "vn-evidence-article-header";
+
+    const articleLink = document.createElement("a");
+    articleLink.href = evidence.article_url || "#";
+    articleLink.target = "_blank";
+    articleLink.className = "vn-evidence-article-title";
+    articleLink.innerText = evidence.article_title || "Bài báo";
+
+    const articleMeta = document.createElement("span");
+    articleMeta.className = "vn-evidence-source";
+    articleMeta.innerText = `${evidence.source_name}${evidence.published_at ? ' - ' + new Date(evidence.published_at).toLocaleDateString('vi-VN') : ''}`;
+
+    articleHeader.appendChild(articleLink);
+    articleHeader.appendChild(articleMeta);
+    evidenceItem.appendChild(articleHeader);
+
+    if (evidence.overall_reasoning) {
+      const reasoning = document.createElement("p");
+      reasoning.className = "vn-evidence-reasoning";
+      reasoning.innerText = evidence.overall_reasoning;
+      evidenceItem.appendChild(reasoning);
+    }
+
+    if (evidence.evidence_spans && evidence.evidence_spans.length > 0) {
+      const spansContainer = document.createElement("div");
+      spansContainer.className = "vn-evidence-spans";
+
+      evidence.evidence_spans.forEach((span) => {
+        const spanItem = document.createElement("div");
+        spanItem.className = "vn-evidence-span-item";
+
+        const spanQuote = document.createElement("blockquote");
+        spanQuote.className = "vn-evidence-quote";
+        spanQuote.innerText = `"${span.text}"`;
+
+        const spanReasoning = document.createElement("p");
+        spanReasoning.className = "vn-span-reasoning";
+        spanReasoning.innerText = `→ ${span.reasoning}`;
+
+        spanItem.appendChild(spanQuote);
+        spanItem.appendChild(spanReasoning);
+        spansContainer.appendChild(spanItem);
+      });
+
+      evidenceItem.appendChild(spansContainer);
+    }
+
+    container.appendChild(evidenceItem);
+  });
+
+  parent.appendChild(container);
+}
+
+function createContentSection(content, createCollapsibleSection) {
+  const contentDiv = document.createElement("div");
+  contentDiv.className = "vn-article-content-text";
+  const contentP = document.createElement("p");
+  contentP.innerText = content;
+  contentDiv.appendChild(contentP);
+  return createCollapsibleSection("Nội dung bài đăng", contentDiv, true);
+}
+
+function createContextBanner(apiResponse) {
+  if (!apiResponse.contextual_judgment || !apiResponse.contextual_judgment.is_out_of_context) return null;
+
+  const container = document.createElement("div");
+  container.className = "vn-context-banner";
+  const title = document.createElement("h4");
+  title.className = "vn-context-title";
+  title.innerText = "⚠ Cảnh báo ngữ cảnh";
+  const reasoning = document.createElement("p");
+  reasoning.className = "vn-context-reasoning";
+  reasoning.innerText = apiResponse.contextual_judgment.reasoning;
+  container.appendChild(title);
+  container.appendChild(reasoning);
+  return container;
+}
+
+function createFooter({ apiResponse, content }) {
+  const footer = document.createElement("div");
+  footer.className = "vn-modal-footer";
+
+  const footerLeft = document.createElement("div");
+  footerLeft.className = "vn-footer-left";
+
+  const footerInfo = document.createElement("div");
+  footerInfo.className = "vn-footer-info";
+  const timeSec = (apiResponse._veriNewsMetadata.total_time_ms / 1000).toFixed(2);
+  footerInfo.innerHTML = `<span class="vn-footer-label">Thời gian:</span> ${timeSec}s`;
+
+  const footerDisclaimer = document.createElement("div");
+  footerDisclaimer.className = "vn-footer-disclaimer";
+  footerDisclaimer.innerText = "⚡ Kết quả phân tích bởi AI chỉ mang tính tham khảo";
+
+  footerLeft.appendChild(footerInfo);
+  footerLeft.appendChild(footerDisclaimer);
+  footer.appendChild(footerLeft);
+
+  const refreshButton = document.createElement("button");
+  refreshButton.className = "vn-refresh-button";
+  refreshButton.innerHTML = `<span class="vn-refresh-icon">↻</span> Xác minh lại`;
+
+  refreshButton.addEventListener("click", async () => {
+    refreshButton.disabled = true;
+    refreshButton.innerText = "Đang xác minh...";
+    try {
+      const progressTracker = createProgressTracker(
+        (event) => console.log("Stage update:", event),
+        (progress) => console.log("Progress:", progress),
+        null,
+        (error) => {
+          console.error("Verification error:", error);
+          refreshButton.disabled = false;
+          refreshButton.innerText = "Thất bại - Thử lại";
+        }
+      );
+
+      document.querySelector(".vn-modal-overlay")?.remove();
+      showContentPopup(content, null, progressTracker, (response) => {
+        document.querySelector(".vn-modal-overlay")?.remove();
+        document.querySelector(".vn-modal-content")?.remove();
+        showContentPopup(content, response);
+        refreshButton.disabled = false;
+        refreshButton.innerText = "Xác minh lại";
+      });
+
+      progressTracker.startStreaming(content, true);
+    } catch (error) {
+      console.error(error);
+      refreshButton.disabled = false;
+      refreshButton.innerText = "Thất bại - Thử lại";
+    }
+  });
+
+  footer.appendChild(refreshButton);
+  return footer;
 }
 
 /**

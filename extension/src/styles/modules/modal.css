@@ -29,36 +29,13 @@
   box-shadow: 0 25px 60px -20px rgba(15, 23, 42, 0.35);
   animation: slideInUp 0.4s ease-out;
   font-family: "Be Vietnam Pro", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  scrollbar-gutter: stable;
-  padding-right: 2px;
   display: flex;
   flex-direction: column;
+  scrollbar-width: none; /* Hide scrollbar in Firefox */
 }
 
-/* Custom scrollbar for modal - positioned inside rounded corners */
 .vn-modal-content::-webkit-scrollbar {
-  width: 6px;
-}
-
-.vn-modal-content::-webkit-scrollbar-track {
-  background: transparent;
-  margin: 16px 6px 16px 0;
-}
-
-.vn-modal-content::-webkit-scrollbar-thumb {
-  background: #e0e0e0;
-  border-radius: 3px;
-  margin-right: 6px;
-}
-
-.vn-modal-content::-webkit-scrollbar-thumb:hover {
-  background: #d0d0d0;
-}
-
-/* For Firefox - scrollbar is automatically inset */
-.vn-modal-content {
-  scrollbar-width: thin;
-  scrollbar-color: #e0e0e0 transparent;
+  display: none; /* Hide scrollbar in WebKit */
 }
 
 .vn-modal-content p {
@@ -67,6 +44,11 @@
   color: #333;
   font-size: 16px;
   line-height: 1.6;
+}
+
+/* Override paragraph styles in hero section */
+.vn-result-hero p {
+  color: inherit;
 }
 
 .vn-modal-close {

@@ -21,12 +21,13 @@
 
 /* Result Hero */
 .vn-result-hero {
-  padding: 48px 32px 40px;
+  padding: 32px 32px 32px;
   text-align: center;
   color: #f8fafc;
   border-radius: 24px 24px 0 0;
   position: relative;
   overflow: hidden;
+  flex-shrink: 0; /* Prevent shrinking when modal scrolls */
 }
 
 .vn-result-hero::after {
@@ -43,16 +44,17 @@
 .vn-result-hero.neutral { background: linear-gradient(135deg, #64748b, #475569); }
 
 .vn-hero-icon-circle {
-  width: 88px;
-  height: 88px;
+  width: 80px;
+  height: 80px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  background: rgba(255, 255, 255, 0.18);
+  border: none;
+  background: rgba(255, 255, 255, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 18px;
+  margin: 0 auto 16px;
   z-index: 1;
+  box-shadow: 0 0 0 8px rgba(255, 255, 255, 0.1);
 }
 
 .vn-hero-icon-circle .vn-icon {
@@ -61,21 +63,40 @@
 }
 
 .vn-hero-title {
-  font-size: 32px;
+  font-size: 36px;
   font-weight: 800;
   margin: 0;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.025em;
   z-index: 1;
 }
 
+@media (min-width: 768px) {
+  .vn-hero-title {
+    font-size: 48px;
+  }
+}
+
 .vn-hero-confidence {
-  margin: 8px 0 0;
-  font-size: 14px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.2em;
-  color: rgba(255, 255, 255, 0.85);
+  margin: 16px 0 0;
+  font-size: 12px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
   z-index: 1;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.vn-hero-confidence .vn-footer-label {
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.vn-result-hero .vn-hero-title {
+  color: #ffffff;
+}
+
+.vn-result-hero .vn-hero-confidence * {
+  color: inherit;
 }
 
 /* Body + Sections */
@@ -84,22 +105,23 @@
   padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 8px;
+  flex-shrink: 0; /* Keep full height; scrolling handled by modal */
 }
 
 .vn-result-section {
   background: #ffffff;
-  border-radius: 20px;
-  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  border: none;
   padding: 24px;
-  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.08);
+  box-shadow: none;
 }
 
 .vn-section-heading {
   margin: 0 0 10px 0;
-  font-size: 18px;
-  font-weight: 700;
-  color: #0f172a;
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
 }
 
 .vn-section-text {
@@ -134,17 +156,17 @@
 
 .vn-score-row-label {
   font-size: 14px;
-  font-weight: 600;
-  color: #64748b;
+  font-weight: 400;
+  color: #6b7280;
   cursor: help;
-  border-bottom: 1px dotted #94a3b8;
-  padding-bottom: 2px;
+  border-bottom: none;
+  padding-bottom: 0;
 }
 
 .vn-score-row-value {
-  font-size: 16px;
-  font-weight: 700;
-  color: #0f172a;
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
 }
 
 /* Tooltip */

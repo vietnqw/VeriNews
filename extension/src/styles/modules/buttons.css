@@ -43,25 +43,25 @@
 
 /* Refresh Button */
 .vn-refresh-button {
-  background: #2563eb;
+  background: #3b82f6;
   color: white;
   border: none;
-  border-radius: 9999px;
+  border-radius: 12px;
   padding: 10px 24px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: background-color 0.2s ease;
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3);
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 }
 
 .vn-refresh-button:hover:not(:disabled) {
-  background: #1d4ed8;
-  transform: translateY(-2px);
-  box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.4);
+  background: #2563eb;
+  transform: none;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 }
 
 .vn-refresh-button:active:not(:disabled) {
