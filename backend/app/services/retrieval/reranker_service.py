@@ -47,6 +47,9 @@ class RerankerService:
         chunks: List[ChunkSearchResult],
         top_n: int | None = None,
         entities: Dict[str, List[str]] | None = None,
+        *,
+        score_threshold: int | None = None,
+        enable_entity_filter: bool | None = None,
     ) -> List[ChunkSearchResult]:
         """
         Rerank chunks using parallel LLM workers with round-robin batching.
@@ -67,12 +70,23 @@ class RerankerService:
         if not chunks:
             return []
 
+        effective_score_threshold = (
+            int(score_threshold)
+            if score_threshold is not None
+            else self.score_threshold
+        )
+        effective_entity_filter_enabled = (
+            bool(enable_entity_filter)
+            if enable_entity_filter is not None
+            else self.entity_filter_enabled
+        )
+
         logger.info(
             f"Reranking {len(chunks)} chunks with {self.num_workers} parallel workers"
         )
 
         # Apply entity filtering if enabled and entities are provided
-        if self.entity_filter_enabled and entities:
+        if effective_entity_filter_enabled and entities:
             chunks = self._filter_chunks_by_entities(chunks, entities)
             logger.info(
                 f"Entity filtering: {len(chunks)} chunks remaining after filtering"
@@ -90,7 +104,13 @@ class RerankerService:
 
         # Score all batches in parallel with timeout and rate limiting
         worker_tasks = [
-            self._score_worker_batch(query, batch, worker_id, semaphore)
+            self._score_worker_batch(
+                query,
+                batch,
+                worker_id,
+                semaphore,
+                score_threshold=effective_score_threshold,
+            )
             for worker_id, batch in enumerate(worker_batches)
         ]
 
@@ -101,7 +121,9 @@ class RerankerService:
         chunk_scores = self._merge_worker_scores(chunks, worker_results)
 
         # Filter by score threshold and normalize
-        filtered_chunks = self._filter_and_normalize_scores(chunks, chunk_scores)
+        filtered_chunks = self._filter_and_normalize_scores(
+            chunks, chunk_scores, score_threshold=effective_score_threshold
+        )
 
         # Sort by score (descending) and return top_n
         filtered_chunks.sort(key=lambda x: x.score, reverse=True)
@@ -146,6 +168,8 @@ class RerankerService:
         chunks: List[ChunkSearchResult],
         worker_id: int,
         semaphore: asyncio.Semaphore,
+        *,
+        score_threshold: int,
     ) -> dict:
         """
         Score a batch of chunks assigned to one worker with timeout and rate limiting.
@@ -170,7 +194,9 @@ class RerankerService:
             async with semaphore:
                 # Apply timeout to prevent long tail latency
                 scores = await asyncio.wait_for(
-                    self._score_batch(query, chunks, worker_id),
+                    self._score_batch(
+                        query, chunks, worker_id, score_threshold=score_threshold
+                    ),
                     timeout=self.worker_timeout,
                 )
 
@@ -204,7 +230,12 @@ class RerankerService:
             }
 
     async def _score_batch(
-        self, query: str, chunks: List[ChunkSearchResult], worker_id: int
+        self,
+        query: str,
+        chunks: List[ChunkSearchResult],
+        worker_id: int,
+        *,
+        score_threshold: int,
     ) -> List[float]:
         """
         Score a batch of chunks in a single API call.
@@ -217,7 +248,9 @@ class RerankerService:
         Returns:
             List of scores (one per chunk, or empty if all filtered)
         """
-        prompt = self._build_parallel_scoring_prompt(query, chunks)
+        prompt = self._build_parallel_scoring_prompt(
+            query, chunks, score_threshold=score_threshold
+        )
 
         try:
             # Call LLM with JSON mode for structured output
@@ -241,7 +274,7 @@ class RerankerService:
 
             logger.debug(
                 f"Worker {worker_id} scored {len(chunks)} chunks: "
-                f"{sum(1 for s in scores if s >= self.score_threshold)} above threshold"
+                f"{sum(1 for s in scores if s >= score_threshold)} above threshold"
             )
 
             return scores
@@ -295,7 +328,11 @@ class RerankerService:
         return final_scores
 
     def _filter_and_normalize_scores(
-        self, chunks: List[ChunkSearchResult], scores: List[float]
+        self,
+        chunks: List[ChunkSearchResult],
+        scores: List[float],
+        *,
+        score_threshold: int,
     ) -> List[ChunkSearchResult]:
         """
         Filter chunks by score threshold and create new ChunkSearchResult objects.
@@ -309,7 +346,7 @@ class RerankerService:
         """
         filtered_chunks = []
         for chunk, score in zip(chunks, scores):
-            if score >= self.score_threshold:
+            if score >= score_threshold:
                 reranked_chunk = ChunkSearchResult(
                     chunk_id=chunk.chunk_id,
                     chunk_text=chunk.chunk_text,
@@ -324,7 +361,7 @@ class RerankerService:
         return filtered_chunks
 
     def _build_parallel_scoring_prompt(
-        self, query: str, chunks: List[ChunkSearchResult]
+        self, query: str, chunks: List[ChunkSearchResult], *, score_threshold: int
     ) -> str:
         """
         Build prompt for parallel worker scoring with Intercom-style grading rubric.
@@ -400,12 +437,12 @@ Return your response in a valid JSON (skip spaces):
 Strict guidelines:
 - Return ONLY a well-formed valid JSON with passage IDs as keys
 - Each key must be a passage id in the format "idN"
-- Each score must be an integer between {self.score_threshold} to 10. EXCLUDE passages that score below {self.score_threshold} (i.e. 0-{self.score_threshold - 1})
+- Each score must be an integer between {score_threshold} to 10. EXCLUDE passages that score below {score_threshold} (i.e. 0-{score_threshold - 1})
 - Integer values only, no decimals
 - Skip spaces in the JSON
 - No additional text or formatting
 - Maintain original passage ID order
-- If no passages score {self.score_threshold}+, return empty JSON: {{}}"""
+- If no passages score {score_threshold}+, return empty JSON: {{}}"""
 
         return prompt
 

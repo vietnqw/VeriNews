@@ -13,6 +13,8 @@ sources:
   - name: "Tuổi Trẻ"
     base_url: "https://tuoitre.vn/"
     feeds:
+      - url: "https://tuoitre.vn/sitemaps/latest-news.rss"
+        topic: "Sitemap Latest News"
       - url: "https://tuoitre.vn/rss/tin-moi-nhat.rss"
         topic: "Tin Mới Nhất"
       - url: "https://tuoitre.vn/rss/thoi-su.rss"
@@ -55,6 +57,8 @@ sources:
   - name: "Thanh Niên"
     base_url: "https://thanhnien.vn/"
     feeds:
+      - url: "https://thanhnien.vn/latest-news-sitemap.xml"
+        topic: "Sitemap Latest News"
       - url: "https://thanhnien.vn/rss/home.rss"
         topic: "Trang chủ"
       - url: "https://thanhnien.vn/rss/thoi-su.rss"
@@ -243,6 +247,5 @@ sources:
         topic: "Thời trang trẻ - Tận hưởng"
       - url: "https://thanhnien.vn/rss/thoi-trang-tre/video.rss"
         topic: "Thời trang trẻ - Video"
-      # - url: "https://thanhnien.vn/rss/thoi-trang-tre/thu-vien-thoi-trang.rss"
-      #   topic: "Thời trang trẻ - Thư viện thời trang"
-      #   is_active: false
+      - url: "https://thanhnien.vn/rss/thoi-trang-tre/thu-vien-thoi-trang.rss"
+        topic: "Thời trang trẻ - Thư viện thời trang"
