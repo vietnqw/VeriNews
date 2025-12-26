@@ -59,6 +59,26 @@ VeriNews provides a unified CLI tool: `./scripts/verinews`
 ./scripts/verinews feeds add SOURCE URL --topic "Topic"    # Add feed
 ./scripts/verinews feeds remove URL                        # Remove feed
 ./scripts/verinews feeds set-active URL true/false         # Enable/disable
+./scripts/verinews feeds prune [--apply] [--delete]        # Deactivate (or delete) DB feeds not in sources.yaml
+```
+
+### If new sources are not being crawled
+
+The crawler reads feeds from the **database**, not directly from `config/sources.yaml`. Also, `feeds sync` only upserts and will not remove old feeds.
+
+```bash
+# 1) Sync YAML -> DB
+./scripts/verinews feeds sync
+
+# 2) Deactivate DB feeds that were removed from YAML (recommended)
+./scripts/verinews feeds prune --apply
+
+# 3) If the crawler seems stuck on old feeds, purge the Celery queue (clears backlog)
+uv run celery -A app.celery_app purge -f
+
+# 4) Restart crawler
+./scripts/verinews crawler stop
+./scripts/verinews crawler start
 ```
 
 ### Logs

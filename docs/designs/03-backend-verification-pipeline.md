@@ -348,7 +348,7 @@ else:
 Used for straightforward scenarios:
 - **No articles found**: "Không tìm thấy bài viết liên quan để xác minh thông tin này."
 - **No claims extracted**: "Không tìm thấy tuyên bố cụ thể có thể xác minh trong nội dung này."
-- **All claims supported**: "Hoàn toàn chính xác. Tất cả {N} tuyên bố đều được xác nhận bởi {M} nguồn tin đáng tin cậy."
+- **All claims supported**: "Đáng tin cậy. Tất cả {N} tuyên bố đều được xác nhận bởi {M} nguồn tin đáng tin cậy."
 - **All claims refuted**: "Thông tin không chính xác. Tất cả tuyên bố đều bị bác bỏ bởi các nguồn tin đáng tin cậy."
 
 **2. LLM Mode** (Complex cases, ~400 tokens):
@@ -395,7 +395,7 @@ If LLM fails or times out:
 
 ```python
 VERDICT_LABELS_VI = {
-    "FULLY_SUPPORTED": "HOÀN TOÀN CHÍNH XÁC",
+    "FULLY_SUPPORTED": "ĐÁNG TIN CẬY",
     "PARTIALLY_SUPPORTED": "ĐÚNG MỘT PHẦN",
     "REFUTED": "SAI SỰ THẬT",
     "NOT_ENOUGH_INFO": "CHƯA ĐỦ BẰNG CHỨNG"
@@ -412,7 +412,7 @@ Input:
 - Sources: 5 articles (Thanh Niên, Tuổi Trẻ, VNExpress)
 
 Output:
-"Hoàn toàn chính xác. Cả 3 tuyên bố đều được xác nhận bởi 5 nguồn tin đáng tin cậy bao gồm Thanh Niên, Tuổi Trẻ và VNExpress."
+"Hoàn toàn đáng tin cậy. Cả 3 tuyên bố đều được xác nhận bởi 5 nguồn tin đáng tin cậy bao gồm Thanh Niên, Tuổi Trẻ và VNExpress."
 ```
 
 **Example 2: Partially Supported (LLM-based)**

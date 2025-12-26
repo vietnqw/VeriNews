@@ -130,7 +130,7 @@ class ExplanationGenerator:
 
         # Map verdict to Vietnamese
         verdict_map = {
-            "FULLY_SUPPORTED": "HOÀN TOÀN CHÍNH XÁC",
+            "FULLY_SUPPORTED": "ĐÁNG TIN CẬY",
             "PARTIALLY_SUPPORTED": "ĐÚNG MỘT PHẦN",
             "REFUTED": "SAI SỰ THẬT",
             "NOT_ENOUGH_INFO": "CHƯA ĐỦ BẰNG CHỨNG",
@@ -202,7 +202,7 @@ Trả lời dưới dạng JSON:
         """
         if verdict.verdict == "FULLY_SUPPORTED":
             return (
-                f"Bài đăng này HOÀN TOÀN CHÍNH XÁC. Tất cả {verdict.total_claims} "
+                f"Bài đăng này ĐÁNG TIN CẬY. Tất cả {verdict.total_claims} "
                 f"luận điểm trong bài đăng đều được xác nhận bởi các nguồn tin "
                 f"đáng tin cậy: {', '.join(verdict.sources_used[:3])}."
             )

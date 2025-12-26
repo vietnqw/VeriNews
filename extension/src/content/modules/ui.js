@@ -447,7 +447,7 @@ function renderResultView({ modal, content, apiResponse, createCollapsibleSectio
 
 function createHeroSection(apiResponse) {
   const decisionMap = {
-    "Fully Supported": "Hoàn toàn chính xác",
+    "Fully Supported": "Đáng tin cậy",
     "Partially Supported": "Đúng một phần",
     "Refuted": "Chưa chính xác",
     "Not Enough Info": "Chưa đủ thông tin",

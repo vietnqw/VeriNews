@@ -1,6 +1,7 @@
 """RSS feed management commands."""
 
 import asyncio
+import builtins
 import sys
 from pathlib import Path
 
@@ -8,6 +9,7 @@ import typer
 import yaml
 from rich.console import Console
 from rich.table import Table
+from sqlalchemy import select
 
 # Add backend directory to path for app imports
 SCRIPTS_DIR = Path(__file__).parent.parent.parent
@@ -18,6 +20,7 @@ sys.path.insert(0, str(BACKEND_DIR))
 from app.config.database import async_session_maker  # noqa: E402
 from app.services.repository.news_source_repository import NewsSourceRepository  # noqa: E402
 from app.services.repository.rss_feed_repository import RssFeedRepository  # noqa: E402
+from app.models.rss_feed import RssFeed  # noqa: E402
 
 app = typer.Typer(help="RSS feed management commands")
 console = Console()
@@ -121,6 +124,76 @@ async def sync_sources_async():
             await session.rollback()
             console.print(f"[red]Error during sync: {e}[/red]")
             raise typer.Exit(code=1)
+
+
+def _collect_yaml_feed_urls(sources_data: list[dict]) -> set[str]:
+    """Collect all feed URLs from sources.yaml."""
+    urls: set[str] = set()
+    for source_data in sources_data:
+        for feed_data in source_data.get("feeds", []):
+            feed_url = feed_data.get("url")
+            if feed_url:
+                urls.add(feed_url)
+    return urls
+
+
+async def prune_feeds_async(*, apply: bool, delete: bool) -> None:
+    """
+    Deactivate (or delete) DB feeds that are not present in config/sources.yaml.
+
+    Note: `feeds sync` only upserts; it will NOT remove feeds that you deleted from YAML.
+    """
+    config = load_sources_config()
+    sources_data = config.get("sources", [])
+    yaml_urls = _collect_yaml_feed_urls(sources_data)
+
+    if not yaml_urls:
+        console.print(
+            "[yellow]No feeds found in sources.yaml; refusing to prune[/yellow]"
+        )
+        raise typer.Exit(code=1)
+
+    feed_repo = RssFeedRepository()
+
+    async with async_session_maker() as session:
+        result = await session.execute(select(RssFeed))
+        feeds = builtins.list(result.scalars().all())
+
+        to_prune = [f for f in feeds if f.feed_url not in yaml_urls]
+        if not to_prune:
+            console.print(
+                "[green]✓ No feeds to prune (DB matches sources.yaml)[/green]"
+            )
+            return
+
+        console.print(
+            f"[bold]Feeds not present in sources.yaml:[/bold] {len(to_prune)}"
+        )
+        for f in to_prune[:50]:
+            console.print(f"  - {f.feed_url} (active={f.is_active})")
+        if len(to_prune) > 50:
+            console.print(f"  ... and {len(to_prune) - 50} more")
+
+        if not apply:
+            console.print("\n[yellow]Dry-run: no changes applied[/yellow]")
+            return
+
+        if delete:
+            for f in to_prune:
+                await feed_repo.delete(session, f.id)
+            await session.commit()
+            console.print(f"\n[green]✓ Deleted {len(to_prune)} feeds from DB[/green]")
+            return
+
+        changed = 0
+        for f in to_prune:
+            if f.is_active:
+                await feed_repo.update(session, f.id, is_active=False)
+                changed += 1
+        await session.commit()
+        console.print(
+            f"\n[green]✓ Deactivated {changed} feeds (kept {len(to_prune) - changed} already inactive)[/green]"
+        )
 
 
 async def list_feeds_async():
@@ -278,3 +351,26 @@ def set_active(
 ):
     """Set a feed active or inactive by URL."""
     asyncio.run(set_active_async(url, active))
+
+
+@app.command()
+def prune(
+    apply: bool = typer.Option(
+        False,
+        "--apply",
+        help="Apply changes. By default this command runs in dry-run mode.",
+    ),
+    delete: bool = typer.Option(
+        False,
+        "--delete",
+        help="Delete feeds not in sources.yaml (default is to deactivate).",
+    ),
+):
+    """
+    Prune DB feeds that are not present in config/sources.yaml.
+
+    - Default behavior is SAFE: dry-run + deactivate (not delete)
+    - Use --apply to apply changes
+    - Use --delete to remove rows entirely
+    """
+    asyncio.run(prune_feeds_async(apply=apply, delete=delete))
