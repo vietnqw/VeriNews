@@ -396,7 +396,7 @@ If LLM fails or times out:
 ```python
 VERDICT_LABELS_VI = {
     "FULLY_SUPPORTED": "ĐÁNG TIN CẬY",
-    "PARTIALLY_SUPPORTED": "ĐÚNG MỘT PHẦN",
+    "PARTIALLY_SUPPORTED": "ĐÁNG TIN CẬY MỘT PHẦN",
     "REFUTED": "SAI SỰ THẬT",
     "NOT_ENOUGH_INFO": "CHƯA ĐỦ BẰNG CHỨNG"
 }
@@ -423,7 +423,7 @@ Input:
 - Sources: 4 articles
 
 Output:
-"Thông tin này đúng một phần. Hai trong ba tuyên bố được xác nhận bởi các nguồn tin uy tín. Tuy nhiên, tuyên bố thứ ba về thời gian áp dụng chính sách chưa có đủ bằng chứng từ các bài viết tin tức."
+"Thông tin này đáng tin cậy một phần. Hai trong ba tuyên bố được xác nhận bởi các nguồn tin uy tín. Tuy nhiên, tuyên bố thứ ba về thời gian áp dụng chính sách chưa có đủ bằng chứng từ các bài viết tin tức."
 ```
 
 **Example 3: Refuted (Rule-based)**

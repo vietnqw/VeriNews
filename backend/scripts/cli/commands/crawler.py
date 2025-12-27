@@ -15,7 +15,13 @@ LOGS_DIR = BACKEND_DIR / "logs"
 
 
 @app.command()
-def start():
+def start(
+    kickoff_now: bool = typer.Option(
+        False,
+        "--kickoff-now",
+        help="Trigger an immediate crawl cycle after starting the worker+beat (useful for first-time setup).",
+    ),
+):
     """Start the crawler (Celery workers + Beat scheduler)."""
     console.print(Panel.fit("[bold green]Starting VeriNews Crawler[/]"))
 
@@ -52,10 +58,21 @@ def start():
     run_command(beat_cmd)
     console.print("[green]✓ Scheduler started[/]")
 
+    if kickoff_now:
+        console.print("\n[yellow]3. Triggering immediate crawl kickoff...[/]")
+        kickoff_cmd = (
+            "uv run celery -A app.celery_app call "
+            "app.tasks.crawler_tasks.kickoff_all_crawls"
+        )
+        run_command(kickoff_cmd, check=False)
+        console.print("[green]✓ Kickoff task sent[/]")
+
     console.print("\n[green]✓ Crawler started successfully![/]")
     console.print("\n[dim]View logs with:[/]")
-    console.print("  ./scripts/verinews logs worker")
-    console.print("  ./scripts/verinews logs beat")
+    console.print("  ./scripts/verinews logs worker   # task logs (most useful)")
+    console.print("  ./scripts/verinews logs beat     # scheduler logs")
+    console.print("\n[dim]Tip:[/] for first-time setup you can run:")
+    console.print("  ./scripts/verinews crawler kickoff")
 
 
 @app.command()
@@ -113,3 +130,17 @@ def status():
     table.add_row("Redis", redis_status)
 
     console.print(table)
+
+
+@app.command()
+def kickoff():
+    """Trigger an immediate crawl cycle (enqueue crawls for all active feeds)."""
+    console.print(Panel.fit("[bold green]Triggering Crawl Kickoff[/]"))
+    cmd = (
+        "uv run celery -A app.celery_app call "
+        "app.tasks.crawler_tasks.kickoff_all_crawls"
+    )
+    run_command(cmd, check=False)
+    console.print("[green]✓ Kickoff task sent[/]")
+    console.print("\n[dim]Tail task logs in:[/]")
+    console.print("  backend/logs/worker.log")

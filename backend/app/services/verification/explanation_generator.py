@@ -131,7 +131,7 @@ class ExplanationGenerator:
         # Map verdict to Vietnamese
         verdict_map = {
             "FULLY_SUPPORTED": "ĐÁNG TIN CẬY",
-            "PARTIALLY_SUPPORTED": "ĐÚNG MỘT PHẦN",
+            "PARTIALLY_SUPPORTED": "ĐÁNG TIN CẬY MỘT PHẦN",
             "REFUTED": "SAI SỰ THẬT",
             "NOT_ENOUGH_INFO": "CHƯA ĐỦ BẰNG CHỨNG",
         }
@@ -209,7 +209,7 @@ Trả lời dưới dạng JSON:
 
         elif verdict.verdict == "PARTIALLY_SUPPORTED":
             return (
-                f"Bài đăng này ĐÚNG MỘT PHẦN. {verdict.supported_claims}/{verdict.total_claims} "
+                f"Bài đăng này ĐÁNG TIN CẬY MỘT PHẦN. {verdict.supported_claims}/{verdict.total_claims} "
                 f"luận điểm được xác nhận, còn lại chưa đủ bằng chứng. "
                 f"Nguồn: {', '.join(verdict.sources_used[:3])}."
             )
