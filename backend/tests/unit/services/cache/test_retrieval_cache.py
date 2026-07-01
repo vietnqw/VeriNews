@@ -49,6 +49,7 @@ class TestRetrievalCache:
                 source_name="VnExpress",
                 published_at=None,
                 relevance_score=2.45,
+                url="https://vnexpress.net/vintech-du-an",
                 chunk_count=3,
                 relevant_chunks=[
                     ChunkDetail(

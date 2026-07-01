@@ -49,6 +49,7 @@ class TestRetrievalOrchestrator:
             source_name="VnExpress",
             published_at="2024-01-15T10:00:00",
             relevance_score=0.85,
+            url="https://vnexpress.net/vintech-factory",
             chunk_count=3,
             relevant_chunks=[],
         )

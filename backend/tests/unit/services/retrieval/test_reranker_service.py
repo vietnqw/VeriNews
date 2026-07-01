@@ -460,10 +460,10 @@ class TestRerankerService:
         assert all("VinTech" in chunk.chunk_text for chunk in result)
 
     @pytest.mark.asyncio
-    async def test_rerank_intercom_style_prompt_format(
+    async def test_rerank_prompt_format(
         self, reranker_service, mock_llm_provider, sample_chunks
     ):
-        """Test that prompt uses Intercom-style format with grading scale."""
+        """Test that the scoring prompt uses the graded fact-checking format."""
 
         def mock_generate(messages, **kwargs):
             response = MagicMock()
@@ -482,12 +482,10 @@ class TestRerankerService:
         messages = call_args.kwargs["messages"]
         prompt_content = messages[0].content
 
-        # Verify Intercom-style elements
-        assert "customer support answer service" in prompt_content
+        # Verify the fact-checking grading rubric and XML input format
+        assert "fact-checking" in prompt_content
         assert "grading_scale" in prompt_content
-        assert "EXCEPTIONAL match" in prompt_content
-        assert "NEAR-PERFECT solution" in prompt_content
-        assert "STRONG MATCH" in prompt_content
+        assert "PERFECT match" in prompt_content
         assert "<query>" in prompt_content
         assert "<passages>" in prompt_content
 
