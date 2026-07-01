@@ -13,6 +13,7 @@ from uuid import UUID
 
 from app.config.settings import settings
 from app.core.logging import get_logger
+from app.services.repository import ArticleRepository
 from app.services.retrieval.bm25_search_service import ChunkSearchResult
 
 logger = get_logger(__name__)
@@ -81,6 +82,7 @@ class ArticleAggregationService:
         self.include_chunks = settings.retrieval.aggregation.include_chunks
         self.min_chunk_score = settings.retrieval.aggregation.min_chunk_score
         self.db = db
+        self.article_repository = ArticleRepository()
 
     async def aggregate_to_articles(
         self, chunks: List[ChunkSearchResult]
@@ -127,26 +129,12 @@ class ArticleAggregationService:
                     "published_at": None,  # We don't have this in ChunkSearchResult
                 }
 
-        # Fetch article URLs and content from database if available
+        # Fetch article URLs and content from the database if a session is available
         article_metadata = {}
         if self.db and article_data:
-            from sqlalchemy import select
-            from app.models.article import Article
-
-            article_ids = list(article_data.keys())
-            result = await self.db.execute(
-                select(
-                    Article.id, Article.url, Article.content, Article.published_at
-                ).where(Article.id.in_(article_ids))
+            article_metadata = await self.article_repository.get_metadata_by_ids(
+                self.db, list(article_data.keys())
             )
-            article_metadata = {
-                row.id: {
-                    "url": row.url,
-                    "content": row.content,
-                    "published_at": row.published_at,
-                }
-                for row in result.all()
-            }
 
         # Article filtering threshold (loaded from config)
         MIN_CHUNK_SCORE = self.min_chunk_score
