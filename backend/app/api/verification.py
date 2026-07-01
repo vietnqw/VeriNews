@@ -14,10 +14,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api._verification_serde import (
+    build_cache_hit_response,
+    build_fresh_response,
+    verification_result_to_cache_dict,
+)
 from app.config.database import get_db
 from app.core.logging import get_logger
 from app.schemas.verification import (
-    ConfidenceMetricsSchema,
     VerificationRequest,
     VerificationResponse,
 )
@@ -71,83 +75,6 @@ def _parse_or_generate_uuid(value: str) -> UUID:
         return uuid5(UUID("6ba7b810-9dad-11d1-80b4-00c04fd430c8"), value)
 
 
-def _verification_result_to_dict(verification_result) -> Dict:
-    """
-    Convert VerificationResultSchema to JSON-serializable dictionary.
-
-    Handles datetime serialization and nested objects.
-    """
-    if not verification_result:
-        return None
-
-    return {
-        "verdict": verification_result.verdict.value,
-        "confidence": verification_result.confidence,
-        "reason": verification_result.reason.value
-        if verification_result.reason
-        else None,
-        "explanation": verification_result.explanation,
-        "claim_verdicts": [
-            {
-                "claim_text": cv.claim_text,
-                "verdict": cv.verdict.value,
-                "confidence": cv.confidence,
-                "reason": cv.reason.value if cv.reason else None,
-                "supporting_evidence": [
-                    {
-                        "claim_text": e.claim_text,
-                        "article_id": e.article_id,
-                        "article_title": e.article_title,
-                        "article_url": e.article_url,
-                        "source_name": e.source_name,
-                        "published_at": e.published_at,
-                        "stance": e.stance.value,
-                        "confidence": e.confidence,
-                        "evidence_spans": [
-                            {"text": span.text, "reasoning": span.reasoning}
-                            for span in e.evidence_spans
-                        ],
-                        "overall_reasoning": e.overall_reasoning,
-                    }
-                    for e in cv.supporting_evidence
-                ],
-                "refuting_evidence": [
-                    {
-                        "claim_text": e.claim_text,
-                        "article_id": e.article_id,
-                        "article_title": e.article_title,
-                        "article_url": e.article_url,
-                        "source_name": e.source_name,
-                        "published_at": e.published_at,
-                        "stance": e.stance.value,
-                        "confidence": e.confidence,
-                        "evidence_spans": [
-                            {"text": span.text, "reasoning": span.reasoning}
-                            for span in e.evidence_spans
-                        ],
-                        "overall_reasoning": e.overall_reasoning,
-                    }
-                    for e in cv.refuting_evidence
-                ],
-            }
-            for cv in verification_result.claim_verdicts
-        ],
-        "total_claims": verification_result.total_claims,
-        "supported_claims": verification_result.supported_claims,
-        "refuted_claims": verification_result.refuted_claims,
-        "sources_used": verification_result.sources_used,
-        "confidence_metrics": {
-            "overall_confidence": verification_result.confidence_metrics.overall_confidence,
-            "evidence_quality": verification_result.confidence_metrics.evidence_quality,
-            "source_agreement": verification_result.confidence_metrics.source_agreement,
-            "source_quantity": verification_result.confidence_metrics.source_quantity,
-            "temporal_relevance": verification_result.confidence_metrics.temporal_relevance,
-        }
-        if verification_result.confidence_metrics
-        else None,
-    }
-
-
 async def _verify_post_standard(
     request: VerificationRequest,
     db: AsyncSession,
@@ -167,128 +94,8 @@ async def _verify_post_standard(
             cached_result = await cache.get(request.text)
             if cached_result:
                 logger.info("Returning cached result")
-                # Calculate total time from request start (includes cache lookup only)
                 total_elapsed_ms = int((time.time() - request_start_time) * 1000)
-
-                # Reconstruct verification result from cache if available
-                cached_verification_dict = cached_result.get("verification_result")
-                if cached_verification_dict:
-                    # Convert cached dict back to VerificationResultSchema
-                    from app.schemas.verification import (
-                        VerificationResultSchema,
-                        OverallVerdictType,
-                        ClaimVerdictSchema,
-                        ClaimVerdictType,
-                        NotEnoughInfoReason,
-                        StanceResultSchema,
-                        StanceType,
-                        EvidenceSpan,
-                        VerificationConfidenceMetricsSchema,
-                    )
-
-                    # Reconstruct confidence metrics
-                    confidence_metrics = (
-                        VerificationConfidenceMetricsSchema(
-                            **cached_verification_dict["confidence_metrics"]
-                        )
-                        if cached_verification_dict.get("confidence_metrics")
-                        else None
-                    )
-
-                    # Reconstruct claim verdicts
-                    claim_verdicts = [
-                        ClaimVerdictSchema(
-                            claim_text=cv["claim_text"],
-                            verdict=ClaimVerdictType(cv["verdict"]),
-                            confidence=cv.get("confidence"),
-                            reason=NotEnoughInfoReason(cv["reason"])
-                            if cv.get("reason")
-                            else None,
-                            supporting_evidence=[
-                                StanceResultSchema(
-                                    claim_text=e["claim_text"],
-                                    article_id=e["article_id"],
-                                    article_title=e["article_title"],
-                                    article_url=e["article_url"],
-                                    source_name=e["source_name"],
-                                    published_at=e.get("published_at"),
-                                    stance=StanceType(e["stance"]),
-                                    confidence=e["confidence"],
-                                    evidence_spans=[
-                                        EvidenceSpan(
-                                            text=span["text"],
-                                            reasoning=span["reasoning"],
-                                        )
-                                        for span in e.get("evidence_spans", [])
-                                    ],
-                                    overall_reasoning=e.get("overall_reasoning", ""),
-                                )
-                                for e in cv.get("supporting_evidence", [])
-                            ],
-                            refuting_evidence=[
-                                StanceResultSchema(
-                                    claim_text=e["claim_text"],
-                                    article_id=e["article_id"],
-                                    article_title=e["article_title"],
-                                    article_url=e["article_url"],
-                                    source_name=e["source_name"],
-                                    published_at=e.get("published_at"),
-                                    stance=StanceType(e["stance"]),
-                                    confidence=e["confidence"],
-                                    evidence_spans=[
-                                        EvidenceSpan(
-                                            text=span["text"],
-                                            reasoning=span["reasoning"],
-                                        )
-                                        for span in e.get("evidence_spans", [])
-                                    ],
-                                    overall_reasoning=e.get("overall_reasoning", ""),
-                                )
-                                for e in cv.get("refuting_evidence", [])
-                            ],
-                        )
-                        for cv in cached_verification_dict.get("claim_verdicts", [])
-                    ]
-
-                    verification_result = VerificationResultSchema(
-                        verdict=OverallVerdictType(cached_verification_dict["verdict"]),
-                        confidence=cached_verification_dict.get("confidence"),
-                        reason=NotEnoughInfoReason(cached_verification_dict["reason"])
-                        if cached_verification_dict.get("reason")
-                        else None,
-                        explanation=cached_verification_dict["explanation"],
-                        claim_verdicts=claim_verdicts,
-                        total_claims=cached_verification_dict["total_claims"],
-                        supported_claims=cached_verification_dict["supported_claims"],
-                        refuted_claims=cached_verification_dict["refuted_claims"],
-                        sources_used=cached_verification_dict.get("sources_used", []),
-                        confidence_metrics=confidence_metrics,
-                    )
-                else:
-                    # Fallback: no cached verification, return None
-                    verification_result = None
-
-                return VerificationResponse(
-                    articles=cached_result.get("articles", []),
-                    total_time_ms=total_elapsed_ms,
-                    stage_timings=cached_result.get("stage_timings", {}),
-                    query_count=cached_result.get("query_count", 0),
-                    verification=verification_result,
-                    cache_hit=True,
-                    factual_confidence=cached_result.get("factual_confidence"),
-                    retrieval_confidence=cached_result.get("retrieval_confidence"),
-                    confidence_metrics=ConfidenceMetricsSchema(
-                        **cached_result["confidence_metrics"]
-                    )
-                    if cached_result.get("confidence_metrics")
-                    else None,
-                    low_confidence_warning=cached_result.get(
-                        "low_confidence_warning", False
-                    ),
-                    early_exit=cached_result.get("early_exit", False),
-                    exit_reason=cached_result.get("exit_reason"),
-                    message=cached_result.get("message"),
-                )
+                return build_cache_hit_response(cached_result, total_elapsed_ms)
         else:
             logger.info("Cache bypass requested, forcing re-verification")
 
@@ -307,9 +114,6 @@ async def _verify_post_standard(
             articles=result["articles"],
         )
 
-        # Serialize verification result for caching
-        verification_result_dict = _verification_result_to_dict(verification_result)
-
         # Cache the result (including all retrieval and verification metadata)
         await cache.set(
             post_text=request.text,
@@ -325,33 +129,22 @@ async def _verify_post_standard(
             early_exit=result.get("early_exit", False),
             exit_reason=result.get("exit_reason"),
             message=result.get("message"),
-            verification_result=verification_result_dict,
+            verification_result=verification_result_to_cache_dict(verification_result),
         )
 
         # Merge stage timings
         stage_timings = result["stage_timings"]
         stage_timings.update(verification_timings)
 
-        # Calculate total time from request start (includes retrieval + verification)
+        # Total time from request start (includes retrieval + verification)
         total_elapsed_ms = int((time.time() - request_start_time) * 1000)
 
-        # Return response with verification result
-        return VerificationResponse(
-            articles=articles_dict,
-            total_time_ms=total_elapsed_ms,
-            stage_timings=stage_timings,
-            query_count=result["query_count"],
-            verification=verification_result,
-            cache_hit=False,
-            factual_confidence=result.get("factual_confidence"),
-            retrieval_confidence=result.get("retrieval_confidence"),
-            confidence_metrics=ConfidenceMetricsSchema(**result["confidence_metrics"])
-            if result.get("confidence_metrics")
-            else None,
-            low_confidence_warning=result.get("low_confidence_warning", False),
-            early_exit=result.get("early_exit", False),
-            exit_reason=result.get("exit_reason"),
-            message=result.get("message"),
+        return build_fresh_response(
+            result,
+            articles_dict,
+            verification_result,
+            stage_timings,
+            total_elapsed_ms,
         )
 
     except Exception as e:
@@ -401,34 +194,8 @@ def _verify_post_streaming(
                         yield f"data: {json.dumps(event)}\n\n"
 
                     # Emit final result
-                    cached_verification_dict = cached_result.get("verification_result")
-                    verification_result = None
-                    if cached_verification_dict:
-                        from app.schemas.verification import (
-                            VerificationResultSchema,
-                        )
-
-                        verification_result = VerificationResultSchema(
-                            **cached_verification_dict
-                        )
-
                     total_elapsed_ms = int((time.time() - request_start_time) * 1000)
-                    response = VerificationResponse(
-                        articles=cached_result.get("articles", []),
-                        total_time_ms=total_elapsed_ms,
-                        stage_timings=cached_result.get("stage_timings", {}),
-                        query_count=cached_result.get("query_count", 0),
-                        verification=verification_result,
-                        cache_hit=True,
-                        factual_confidence=cached_result.get("factual_confidence"),
-                        retrieval_confidence=cached_result.get("retrieval_confidence"),
-                        low_confidence_warning=cached_result.get(
-                            "low_confidence_warning", False
-                        ),
-                        early_exit=cached_result.get("early_exit", False),
-                        exit_reason=cached_result.get("exit_reason"),
-                        message=cached_result.get("message"),
-                    )
+                    response = build_cache_hit_response(cached_result, total_elapsed_ms)
                     yield f"data: {json.dumps({'type': 'result', 'data': response.model_dump()})}\n\n"
                     return
 
@@ -515,8 +282,6 @@ def _verify_post_streaming(
             event = create_stage_event("synthesis", "in_progress")
             yield f"data: {json.dumps(event)}\n\n"
 
-            verification_result_dict = _verification_result_to_dict(verification_result)
-
             await cache.set(
                 post_text=request.text,
                 articles=result["articles"],
@@ -531,7 +296,9 @@ def _verify_post_streaming(
                 early_exit=result.get("early_exit", False),
                 exit_reason=result.get("exit_reason"),
                 message=result.get("message"),
-                verification_result=verification_result_dict,
+                verification_result=verification_result_to_cache_dict(
+                    verification_result
+                ),
             )
 
             event = create_stage_event("synthesis", "completed")
@@ -543,24 +310,12 @@ def _verify_post_streaming(
 
             total_elapsed_ms = int((time.time() - request_start_time) * 1000)
 
-            response = VerificationResponse(
-                articles=articles_dict,
-                total_time_ms=total_elapsed_ms,
-                stage_timings=stage_timings,
-                query_count=result["query_count"],
-                verification=verification_result,
-                cache_hit=False,
-                factual_confidence=result.get("factual_confidence"),
-                retrieval_confidence=result.get("retrieval_confidence"),
-                confidence_metrics=ConfidenceMetricsSchema(
-                    **result["confidence_metrics"]
-                )
-                if result.get("confidence_metrics")
-                else None,
-                low_confidence_warning=result.get("low_confidence_warning", False),
-                early_exit=result.get("early_exit", False),
-                exit_reason=result.get("exit_reason"),
-                message=result.get("message"),
+            response = build_fresh_response(
+                result,
+                articles_dict,
+                verification_result,
+                stage_timings,
+                total_elapsed_ms,
             )
 
             yield f"data: {json.dumps({'type': 'result', 'data': response.model_dump()})}\n\n"
