@@ -15,6 +15,8 @@ from app.config.settings import settings
 from app.core.logging import get_logger
 from app.services.ai.base import LLMMessage
 from app.services.ai.factory import AIServiceFactory
+from app.services.common import round_robin_batches, run_worker_batches
+from app.services.common.parallel_workers import IndexedBatch
 from app.services.retrieval.bm25_search_service import ChunkSearchResult
 
 logger = get_logger(__name__)
@@ -96,26 +98,21 @@ class RerankerService:
                 logger.warning("No chunks passed entity filter. Returning empty list.")
                 return []
 
-        # Create round-robin batches for parallel workers
-        worker_batches = self._create_round_robin_batches(chunks)
-
-        # Create semaphore for rate limiting
+        # Split chunks across workers (round-robin, original indices preserved so
+        # scores merge back deterministically) and rate-limit concurrent calls.
+        batches = round_robin_batches(chunks, self.num_workers)
         semaphore = asyncio.Semaphore(self.max_concurrent)
 
-        # Score all batches in parallel with timeout and rate limiting
-        worker_tasks = [
-            self._score_worker_batch(
+        worker_results = await run_worker_batches(
+            batches,
+            lambda worker_id, batch: self._score_worker_batch(
                 query,
                 batch,
                 worker_id,
                 semaphore,
                 score_threshold=effective_score_threshold,
-            )
-            for worker_id, batch in enumerate(worker_batches)
-        ]
-
-        # Wait for all workers (with timeout handling built into each worker)
-        worker_results = await asyncio.gather(*worker_tasks)
+            ),
+        )
 
         # Merge scores from all workers
         chunk_scores = self._merge_worker_scores(chunks, worker_results)
@@ -134,38 +131,10 @@ class RerankerService:
 
         return filtered_chunks[:top_n]
 
-    def _create_round_robin_batches(
-        self, chunks: List[ChunkSearchResult]
-    ) -> List[List[ChunkSearchResult]]:
-        """
-        Split chunks into round-robin batches for parallel workers.
-
-        This prevents positional bias from vector search ordering by ensuring
-        each worker gets a similar mix of high/medium/low similarity chunks.
-
-        Args:
-            chunks: All chunks to distribute
-
-        Returns:
-            List of batches (one per worker), where batch_j = {chunks[i] | i % N == j}
-        """
-        worker_batches = [[] for _ in range(self.num_workers)]
-
-        for i, chunk in enumerate(chunks):
-            worker_id = i % self.num_workers
-            worker_batches[worker_id].append(chunk)
-
-        logger.debug(
-            f"Created {self.num_workers} round-robin batches: "
-            + ", ".join(f"{len(b)} chunks" for b in worker_batches)
-        )
-
-        return worker_batches
-
     async def _score_worker_batch(
         self,
         query: str,
-        chunks: List[ChunkSearchResult],
+        batch: IndexedBatch,
         worker_id: int,
         semaphore: asyncio.Semaphore,
         *,
@@ -176,19 +145,19 @@ class RerankerService:
 
         Args:
             query: Original query
-            chunks: Batch of chunks for this worker
+            batch: List of (global_index, chunk) tuples for this worker
             worker_id: Worker identifier for logging
             semaphore: Semaphore for rate limiting concurrent API calls
 
         Returns:
-            Dict with worker_id, chunk_indices, and scores (or None on timeout/error)
+            Dict with the batch's global indices and scores (scores is None on
+            timeout/error, signalling the merge step to keep fallback scores).
         """
-        if not chunks:
-            return {"worker_id": worker_id, "chunk_indices": [], "scores": []}
+        if not batch:
+            return {"indices": [], "scores": []}
 
-        # Store original indices for merging (position in worker's batch)
-        # We'll reconstruct global indices during merge using round-robin logic
-        chunk_indices = list(range(len(chunks)))
+        indices = [idx for idx, _ in batch]
+        chunks = [chunk for _, chunk in batch]
 
         try:
             async with semaphore:
@@ -202,32 +171,20 @@ class RerankerService:
 
             logger.debug(f"Worker {worker_id} completed: {len(chunks)} chunks scored")
 
-            return {
-                "worker_id": worker_id,
-                "chunk_indices": chunk_indices,
-                "scores": scores,
-            }
+            return {"indices": indices, "scores": scores}
 
         except asyncio.TimeoutError:
             logger.warning(
                 f"Worker {worker_id} timed out after {self.worker_timeout}s. "
                 f"Will use fallback scores for {len(chunks)} chunks."
             )
-            return {
-                "worker_id": worker_id,
-                "chunk_indices": chunk_indices,
-                "scores": None,  # Sentinel for timeout
-            }
+            return {"indices": indices, "scores": None}  # Sentinel for timeout
         except Exception as e:
             logger.error(
                 f"Worker {worker_id} failed with error: {e}. "
                 f"Will use fallback scores for {len(chunks)} chunks."
             )
-            return {
-                "worker_id": worker_id,
-                "chunk_indices": chunk_indices,
-                "scores": None,  # Sentinel for error
-            }
+            return {"indices": indices, "scores": None}  # Sentinel for error
 
     async def _score_batch(
         self,
@@ -296,7 +253,9 @@ class RerankerService:
 
         Args:
             chunks: Original list of all chunks
-            worker_results: Results from each worker (containing indices and scores)
+            worker_results: Results from each worker (each carrying the batch's
+                global indices and scores), possibly including Exception objects
+                for workers that raised.
 
         Returns:
             List of final scores (one per chunk, in original order)
@@ -304,24 +263,22 @@ class RerankerService:
         # Initialize with fallback scores (use original RRF scores)
         final_scores = [chunk.score for chunk in chunks]
 
-        # Merge scores from successful workers
+        # Merge scores from successful workers using each item's global index
         for result in worker_results:
-            worker_id = result["worker_id"]
-            chunk_indices = result["chunk_indices"]  # Local indices within worker batch
+            if isinstance(result, Exception):
+                logger.debug(f"Worker raised, using fallback scores: {result}")
+                continue
+
+            indices = result["indices"]
             scores = result["scores"]
 
             if scores is None:
                 # Worker timed out or failed - keep fallback scores
-                logger.debug(
-                    f"Worker {worker_id} used fallback scores for {len(chunk_indices)} chunks"
-                )
+                logger.debug(f"Worker used fallback scores for {len(indices)} chunks")
                 continue
 
             # Update with LLM scores (keep in 0-10 scale)
-            for local_idx, score in enumerate(scores):
-                # Reconstruct global index using round-robin logic: global_idx = worker_id + local_idx * num_workers
-                global_idx = worker_id + local_idx * self.num_workers
-
+            for global_idx, score in zip(indices, scores):
                 if global_idx < len(chunks):  # Safety check
                     final_scores[global_idx] = float(score)
 

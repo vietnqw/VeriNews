@@ -20,6 +20,7 @@ from app.config.settings import settings
 from app.core.logging import get_logger
 from app.services.ai.base import LLMMessage
 from app.services.ai.factory import AIServiceFactory
+from app.services.common import round_robin_batches, run_worker_batches
 from app.services.retrieval.article_aggregation_service import ArticleResult
 
 logger = get_logger(__name__)
@@ -51,6 +52,9 @@ class ArticleRerankerService:
         self.min_items_for_split = (
             settings.retrieval.reranking.article_level.min_items_for_split
         )
+        self.early_exit_score = (
+            settings.retrieval.reranking.article_level.early_exit_score
+        )
 
     async def rerank_articles(
         self,
@@ -75,7 +79,7 @@ class ArticleRerankerService:
             return []
 
         # Early exit for single high-confidence article (score is 0-10 scale)
-        if len(articles) == 1 and articles[0].relevance_score >= 9.0:
+        if len(articles) == 1 and articles[0].relevance_score >= self.early_exit_score:
             logger.info(
                 "Early exit: Single high-confidence article "
                 f"(score={articles[0].relevance_score:.2f})"
@@ -87,20 +91,21 @@ class ArticleRerankerService:
             f"{self.num_workers} workers"
         )
 
-        # Create round-robin batches for parallel workers
-        worker_batches = self._create_round_robin_batches(articles)
-
-        # Create semaphore for rate limiting
+        # Split articles across workers. Small sets go to a single worker so the
+        # LLM can score them comparatively (listwise); larger sets round-robin.
+        batches = round_robin_batches(
+            articles,
+            self.num_workers,
+            min_items_for_single_batch=self.min_items_for_split,
+        )
         semaphore = asyncio.Semaphore(self.max_concurrent)
 
-        # Score all batches in parallel
-        worker_tasks = [
-            self._score_worker_batch(query, batch, worker_id, semaphore)
-            for worker_id, batch in enumerate(worker_batches)
-        ]
-
-        # Wait for all workers (with exception handling)
-        worker_results = await asyncio.gather(*worker_tasks, return_exceptions=True)
+        worker_results = await run_worker_batches(
+            batches,
+            lambda worker_id, batch: self._score_worker_batch(
+                query, batch, worker_id, semaphore
+            ),
+        )
 
         # Filter out exceptions
         successful_results = [r for r in worker_results if not isinstance(r, Exception)]
@@ -133,49 +138,6 @@ class ArticleRerankerService:
         )
 
         return scored_articles[:top_n]
-
-    def _create_round_robin_batches(
-        self, articles: List[ArticleResult]
-    ) -> List[List[Tuple[int, ArticleResult]]]:
-        """
-        Distribute articles across workers with adaptive strategy.
-
-        - For few articles (<= min_items_for_split), send all to a single worker
-          so the LLM can compare them directly (listwise scoring).
-        - For larger sets, use round-robin to balance workload across workers.
-
-        Returns:
-            List of batches, where each batch contains tuples of (original_index, article)
-            to preserve the original index for score mapping.
-        """
-        batches: List[List[Tuple[int, ArticleResult]]] = [
-            [] for _ in range(self.num_workers)
-        ]
-
-        # Adaptive strategy: keep few articles together for comparative scoring
-        if len(articles) <= self.min_items_for_split and len(articles) > 0:
-            batches[0] = [(idx, article) for idx, article in enumerate(articles)]
-            logger.debug(
-                "Adaptive article batching: %d articles <= min_items_for_split (%d); "
-                "sending all to worker 0 for listwise scoring",
-                len(articles),
-                self.min_items_for_split,
-            )
-            return batches
-
-        # Standard round-robin distribution for larger sets
-        for idx, article in enumerate(articles):
-            worker_id = idx % self.num_workers
-            batches[worker_id].append((idx, article))
-
-        # Log batch distribution
-        batch_sizes = [len(b) for b in batches]
-        logger.debug(
-            f"Round-robin distribution: {batch_sizes} articles per worker "
-            f"(total={sum(batch_sizes)})"
-        )
-
-        return batches
 
     async def _score_worker_batch(
         self,

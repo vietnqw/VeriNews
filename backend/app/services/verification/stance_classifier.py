@@ -16,6 +16,8 @@ from app.config.settings import settings
 from app.core.logging import get_logger
 from app.services.ai.base import LLMMessage
 from app.services.ai.factory import AIServiceFactory
+from app.services.common import round_robin_batches, run_worker_batches
+from app.services.common.parallel_workers import IndexedBatch
 from app.services.verification.claim_article_mapper import (
     ArticleEvidence,
     ClaimArticleMapping,
@@ -95,20 +97,16 @@ class StanceClassifier:
             f"Classifying {len(pairs)} claim-article pairs with {self.num_workers} workers"
         )
 
-        # Create round-robin batches for parallel workers
-        worker_batches = self._create_round_robin_batches(pairs)
-
-        # Create semaphore for rate limiting
+        # Split pairs across workers (round-robin, indices preserved) and rate-limit
+        batches = round_robin_batches(pairs, self.num_workers)
         semaphore = asyncio.Semaphore(self.num_workers)
 
-        # Process all batches in parallel
-        worker_tasks = [
-            self._process_worker_batch(batch, worker_id, semaphore)
-            for worker_id, batch in enumerate(worker_batches)
-        ]
-
-        # Wait for all workers
-        worker_results = await asyncio.gather(*worker_tasks, return_exceptions=True)
+        worker_results = await run_worker_batches(
+            batches,
+            lambda worker_id, batch: self._process_worker_batch(
+                batch, worker_id, semaphore
+            ),
+        )
 
         # Merge results from all workers
         all_results = []
@@ -124,27 +122,9 @@ class StanceClassifier:
 
         return all_results
 
-    def _create_round_robin_batches(self, pairs: List[tuple]) -> List[List[tuple]]:
-        """
-        Split pairs into round-robin batches for parallel workers.
-
-        Args:
-            pairs: List of (claim, article) tuples
-
-        Returns:
-            List of batches (one per worker)
-        """
-        worker_batches = [[] for _ in range(self.num_workers)]
-
-        for i, pair in enumerate(pairs):
-            worker_id = i % self.num_workers
-            worker_batches[worker_id].append(pair)
-
-        return worker_batches
-
     async def _process_worker_batch(
         self,
-        batch: List[tuple],
+        batch: IndexedBatch,
         worker_id: int,
         semaphore: asyncio.Semaphore,
     ) -> List[StanceResult]:
@@ -152,7 +132,7 @@ class StanceClassifier:
         Process a batch of claim-article pairs in one worker.
 
         Args:
-            batch: List of (claim, article) tuples
+            batch: List of (index, (claim, article)) tuples for this worker
             worker_id: Worker identifier
             semaphore: Semaphore for rate limiting
 
@@ -164,7 +144,7 @@ class StanceClassifier:
 
         results = []
 
-        for claim, article in batch:
+        for _, (claim, article) in batch:
             try:
                 async with semaphore:
                     result = await asyncio.wait_for(
