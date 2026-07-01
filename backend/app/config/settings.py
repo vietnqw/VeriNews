@@ -6,9 +6,11 @@ Loads configuration from two sources:
 2. YAML file (config.yaml) - for application logic and business rules
 """
 
+import math
 import yaml
 from pathlib import Path
 from typing import Literal
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -107,11 +109,12 @@ class HybridSearchSettings(BaseSettings):
 class QueryExtractionSettings(BaseSettings):
     """Query extraction configuration"""
 
+    # Defaults mirror config.yaml so a missing YAML section behaves identically.
     enabled: bool = True
-    max_claims: int = 5
-    min_factual_confidence: float = 3.0
-    enable_similarity_filter: bool = False
-    similarity_threshold: float = 0.75
+    max_claims: int = 10
+    min_factual_confidence: float = 2.0
+    enable_similarity_filter: bool = True
+    similarity_threshold: float = 0.9
 
 
 class FusionSettings(BaseSettings):
@@ -125,7 +128,7 @@ class EntityFilterSettings(BaseSettings):
     """Entity filtering configuration for reranking"""
 
     enabled: bool = True
-    min_entity_match_ratio: float = 0.2
+    min_entity_match_ratio: float = 0.6  # mirrors config.yaml
 
 
 class ArticleLevelRerankingSettings(BaseSettings):
@@ -135,9 +138,11 @@ class ArticleLevelRerankingSettings(BaseSettings):
     num_parallel_workers: int = 8
     worker_timeout_seconds: float = 5.0
     max_concurrent_calls: int = 8
-    score_threshold: float = 5.0
+    score_threshold: float = 7.0  # mirrors config.yaml
     max_articles_to_rerank: int = 15
     min_items_for_split: int = 4
+    # Skip reranking when there is a single article already this confident (0-10).
+    early_exit_score: float = 9.0
 
 
 class RerankingSettings(BaseSettings):
@@ -186,6 +191,16 @@ class ConfidenceScoringSettings(BaseSettings):
     min_confidence_threshold: float = 0.25
     weights: ConfidenceScoringWeights = ConfidenceScoringWeights()
     thresholds: ConfidenceScoringThresholds = ConfidenceScoringThresholds()
+
+
+class FallbackRetrievalSettings(BaseSettings):
+    """Fallback ('related mode') retrieval configuration.
+
+    Used only when strict retrieval returns no articles; relaxes filtering to
+    surface loosely-related articles instead of nothing.
+    """
+
+    rerank_score_threshold: int = 3
 
 
 class CacheSettings(BaseSettings):
@@ -275,6 +290,50 @@ class RetrievalSettings(BaseSettings):
     aggregation: AggregationSettings
     confidence_scoring: ConfidenceScoringSettings
     cache: CacheSettings
+    fallback: FallbackRetrievalSettings
+
+
+def _build_retrieval_settings() -> RetrievalSettings:
+    """Build the retrieval settings tree from the (module-level) YAML config."""
+    retrieval_config = yaml_config.get("retrieval", {})
+    return RetrievalSettings(
+        vietnamese_processing=VietnameseProcessingSettings(
+            **retrieval_config.get("vietnamese_processing", {})
+        ),
+        vector_search=VectorSearchSettings(**retrieval_config.get("vector_search", {})),
+        bm25_search=BM25SearchSettings(**retrieval_config.get("bm25_search", {})),
+        hybrid=HybridSearchSettings(**retrieval_config.get("hybrid", {})),
+        query_extraction=QueryExtractionSettings(
+            **retrieval_config.get("query_extraction", {})
+        ),
+        fusion=FusionSettings(**retrieval_config.get("fusion", {})),
+        reranking=RerankingSettings(**retrieval_config.get("reranking", {})),
+        aggregation=AggregationSettings(**retrieval_config.get("aggregation", {})),
+        confidence_scoring=ConfidenceScoringSettings(
+            **retrieval_config.get("confidence_scoring", {})
+        ),
+        cache=CacheSettings(**retrieval_config.get("cache", {})),
+        fallback=FallbackRetrievalSettings(**retrieval_config.get("fallback", {})),
+    )
+
+
+def _build_verification_settings() -> VerificationSettings:
+    """Build the verification settings tree from the (module-level) YAML config."""
+    verification_config = yaml_config.get("verification", {})
+    return VerificationSettings(
+        enabled=verification_config.get("enabled", True),
+        stance_classification=StanceClassificationSettings(
+            **verification_config.get("stance_classification", {})
+        ),
+        aggregation=VerificationAggregationSettings(
+            **verification_config.get("aggregation", {})
+        ),
+        verdict=VerdictSettings(**verification_config.get("verdict", {})),
+        confidence_scoring=VerificationConfidenceScoringSettings(
+            **verification_config.get("confidence_scoring", {})
+        ),
+        explanation=ExplanationSettings(**verification_config.get("explanation", {})),
+    )
 
 
 class Settings(BaseSettings):
@@ -331,53 +390,48 @@ class Settings(BaseSettings):
     crawler: CrawlerSettings = CrawlerSettings(**yaml_config.get("crawler", {}))
     ai: AISettings = AISettings(**yaml_config.get("ai", {}))
 
-    # Retrieval pipeline configuration
-    @property
-    def retrieval(self) -> RetrievalSettings:
-        """Get retrieval pipeline settings"""
-        retrieval_config = yaml_config.get("retrieval", {})
-        return RetrievalSettings(
-            vietnamese_processing=VietnameseProcessingSettings(
-                **retrieval_config.get("vietnamese_processing", {})
-            ),
-            vector_search=VectorSearchSettings(
-                **retrieval_config.get("vector_search", {})
-            ),
-            bm25_search=BM25SearchSettings(**retrieval_config.get("bm25_search", {})),
-            hybrid=HybridSearchSettings(**retrieval_config.get("hybrid", {})),
-            query_extraction=QueryExtractionSettings(
-                **retrieval_config.get("query_extraction", {})
-            ),
-            fusion=FusionSettings(**retrieval_config.get("fusion", {})),
-            reranking=RerankingSettings(**retrieval_config.get("reranking", {})),
-            aggregation=AggregationSettings(**retrieval_config.get("aggregation", {})),
-            confidence_scoring=ConfidenceScoringSettings(
-                **retrieval_config.get("confidence_scoring", {})
-            ),
-            cache=CacheSettings(**retrieval_config.get("cache", {})),
+    # Retrieval & verification pipeline configuration.
+    # Built once at construction (the nested trees have required fields) instead
+    # of being reconstructed from YAML on every access.
+    retrieval: RetrievalSettings = _build_retrieval_settings()
+    verification: VerificationSettings = _build_verification_settings()
+
+    @model_validator(mode="after")
+    def _validate_pipeline_config(self) -> "Settings":
+        """Fail fast on internally-inconsistent pipeline config.
+
+        Catches the mistakes that otherwise surface as silently wrong scoring:
+        confidence-weight groups that don't sum to 1.0, and a reranking ``top_n``
+        larger than the number of articles aggregation will keep.
+        """
+        errors: list[str] = []
+
+        def _check_weights(label: str, weights: dict[str, float]) -> None:
+            total = sum(weights.values())
+            if not math.isclose(total, 1.0, abs_tol=0.01):
+                errors.append(f"{label} weights must sum to 1.0 (got {total:.3f})")
+
+        _check_weights(
+            "retrieval.confidence_scoring",
+            self.retrieval.confidence_scoring.weights.model_dump(),
+        )
+        _check_weights(
+            "verification.confidence_scoring",
+            self.verification.confidence_scoring.weights.model_dump(),
         )
 
-    # Verification pipeline configuration
-    @property
-    def verification(self) -> VerificationSettings:
-        """Get verification pipeline settings"""
-        verification_config = yaml_config.get("verification", {})
-        return VerificationSettings(
-            enabled=verification_config.get("enabled", True),
-            stance_classification=StanceClassificationSettings(
-                **verification_config.get("stance_classification", {})
-            ),
-            aggregation=VerificationAggregationSettings(
-                **verification_config.get("aggregation", {})
-            ),
-            verdict=VerdictSettings(**verification_config.get("verdict", {})),
-            confidence_scoring=VerificationConfidenceScoringSettings(
-                **verification_config.get("confidence_scoring", {})
-            ),
-            explanation=ExplanationSettings(
-                **verification_config.get("explanation", {})
-            ),
-        )
+        top_n = self.retrieval.reranking.top_n
+        max_articles = self.retrieval.aggregation.max_articles
+        if top_n > max_articles:
+            errors.append(
+                f"retrieval.reranking.top_n ({top_n}) must be <= "
+                f"retrieval.aggregation.max_articles ({max_articles})"
+            )
+
+        if errors:
+            raise ValueError("Invalid pipeline configuration: " + "; ".join(errors))
+
+        return self
 
     @property
     def openai_api_key(self) -> str:

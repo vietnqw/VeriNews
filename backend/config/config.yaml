@@ -86,6 +86,7 @@ retrieval:
       score_threshold: 7.0  # Minimum article score (0-10 scale)
       max_articles_to_rerank: 15  # Limit articles to rerank (performance optimization)
       min_items_for_split: 4  # If number of articles <= this, send all to one worker for comparative scoring
+      early_exit_score: 9.0  # Skip reranking a lone article already this confident (0-10)
 
   # Article aggregation
   aggregation:
@@ -114,6 +115,10 @@ retrieval:
     enabled: true  # Enable result caching
     ttl_hours: 24  # Cache TTL in hours
     redis_key_prefix: "retrieval:"  # Redis key prefix
+
+  # Fallback ("related mode") retrieval — used only when strict retrieval finds nothing
+  fallback:
+    rerank_score_threshold: 3  # Lower chunk-score bar to surface loosely-related articles
 
 # Verification Pipeline Configuration
 verification:
