@@ -24,6 +24,7 @@
         "src/config/config.js",
         "src/content/modules/constants.js",
         "src/content/modules/utils.js",
+        "src/content/modules/sse.js",
         "src/content/modules/api.js",
         "src/content/modules/progress.js",
         "src/content/modules/extractor.js",

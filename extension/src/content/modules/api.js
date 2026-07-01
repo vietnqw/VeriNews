@@ -5,7 +5,7 @@
 function adaptVeriNewsResponse(veriNewsData) {
   // Map articles to MVP format
   const matched_articles = (veriNewsData.articles || []).map(article => ({
-    // Use article_id as fallback URL until backend adds url field
+    // Fall back to an anchor if an article somehow lacks a URL
     url: article.url || `#article-${article.article_id}`,
     title: article.title || "Bài viết không có tiêu đề",
     source: article.source_name || "Nguồn không xác định",
@@ -108,9 +108,6 @@ function adaptVeriNewsResponse(veriNewsData) {
       temporal_relevance: confidence_metrics.temporal_relevance || 0
     } : null,
 
-    // Contextual judgment not available
-    contextual_judgment: null,
-
     error: false,
     message: veriNewsData.cache_hit
       ? "Đã truy xuất từ bộ nhớ đệm"
@@ -174,40 +171,21 @@ async function callVerifyAPIWithProgress(
       return { error: true, message: "API request failed" };
     }
 
-    // Handle SSE stream
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
+    // Handle SSE stream via the shared parser
     let finalResult = null;
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-
-      // Process complete SSE messages
-      const lines = buffer.split("\n");
-      buffer = lines.pop(); // Keep incomplete line in buffer
-
-      for (const line of lines) {
-        if (line.startsWith("data: ")) {
-          try {
-            const eventData = JSON.parse(line.slice(6));
-            if (eventData.type === "stage_update") {
-              onStageUpdate?.(eventData);
-              onProgressUpdate?.(eventData);
-            } else if (eventData.type === "result") {
-              finalResult = adaptVeriNewsResponse(eventData.data);
-            } else if (eventData.type === "error") {
-              onError?.({ message: eventData.message });
-            }
-          } catch (e) {
-            console.error("Failed to parse SSE event:", line, e);
-          }
+    await parseSSEStream(response, {
+      onEvent: (eventData) => {
+        if (eventData.type === "stage_update") {
+          onStageUpdate?.(eventData);
+          onProgressUpdate?.(eventData);
+        } else if (eventData.type === "result") {
+          finalResult = adaptVeriNewsResponse(eventData.data);
+        } else if (eventData.type === "error") {
+          onError?.({ message: eventData.message });
         }
-      }
-    }
+      },
+    });
 
     return finalResult || { error: true, message: "No response received" };
   } catch (error) {

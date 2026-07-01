@@ -796,8 +796,8 @@ function createFooter({ apiResponse, content }) {
     refreshButton.innerText = "Đang xác minh...";
     try {
       const progressTracker = createProgressTracker(
-        (event) => console.log("Stage update:", event),
-        (progress) => console.log("Progress:", progress),
+        () => {}, // stage updates are rendered by the progress loading UI
+        () => {},
         null,
         (error) => {
           console.error("Verification error:", error);
@@ -859,8 +859,8 @@ async function createOverlay(target, type) {
 
     // Create progress tracker for streaming verification
     const progressTracker = createProgressTracker(
-      (event) => console.log("Stage update:", event),
-      (progress) => console.log("Progress:", progress),
+      () => {}, // stage updates are rendered by the progress loading UI
+      () => {},
       null, // onComplete will be handled by createProgressLoadingUI
       (error) => {
         // Don't remove modal overlay - let error UI display inside the modal

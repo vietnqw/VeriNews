@@ -56,7 +56,6 @@ function findAndProcessContent(node) {
 }
 
 function startObserver() {
-  console.log("✅ Extension is ON. Starting to observe...");
   if (observer) return;
 
   findAndProcessContent(document.body);
@@ -83,7 +82,6 @@ function startObserver() {
 }
 
 function stopObserver() {
-  console.log("❌ Extension is OFF. Stopping operations...");
   if (observer) {
     observer.disconnect();
     observer = null;

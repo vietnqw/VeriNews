@@ -1,9 +1,11 @@
 // Extension configuration
 const CONFIG = {
-  // Backend API configuration
-  // Default: localhost for development
-  // Change this to your production URL when deploying
-  BACKEND_BASE_URL: "https://prediscountable-rustily-emmalee.ngrok-free.dev",
+  // Backend API configuration.
+  // This is the ONLY place the backend location is configured — set it to
+  // wherever your VeriNews backend is running.
+  //   - Local dev:      http://localhost:8000
+  //   - Tunnel/hosted:  https://<your-host>
+  BACKEND_BASE_URL: "http://localhost:8000",
   HEALTH_ENDPOINT: "/api/v1/health",
 
   // Connection timeout in milliseconds

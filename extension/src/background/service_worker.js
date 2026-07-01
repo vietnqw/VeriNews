@@ -16,11 +16,15 @@ function getTimeoutSignal(ms) {
 async function performHealthCheck(config) {
   const { baseUrl, healthEndpoint, timeoutMs } = config;
   try {
+    // Only send the ngrok bypass header when the backend is actually behind an
+    // ngrok tunnel; harmless to omit for localhost/other hosts.
+    const headers = {};
+    if (baseUrl && baseUrl.includes("ngrok")) {
+      headers["ngrok-skip-browser-warning"] = "true";
+    }
     const res = await fetch(`${baseUrl}${healthEndpoint}`, {
       method: "GET",
-      headers: {
-        "ngrok-skip-browser-warning": "true",
-      },
+      headers,
       cache: "no-store",
       signal: getTimeoutSignal(timeoutMs || 5000),
     });
