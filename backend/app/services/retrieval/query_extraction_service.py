@@ -6,7 +6,7 @@ Extracts clean queries and specific claims from noisy Facebook posts using LLM.
 
 import json
 import re
-from typing import Dict, List
+from typing import Any, Dict, List
 
 from app.config.settings import settings
 from app.core.logging import get_logger
@@ -32,7 +32,7 @@ class QueryExtractionService:
         self.model = settings.ai.llm_model
         self.max_claims = settings.retrieval.query_extraction.max_claims
 
-    async def extract_queries(self, post_text: str) -> Dict[str, any]:
+    async def extract_queries(self, post_text: str) -> Dict[str, Any]:
         """
         Extract clean query and claims from a Facebook post.
 

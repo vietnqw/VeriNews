@@ -155,115 +155,12 @@ class RetrievalOrchestrator:
         # Emit: Stage 1 complete (Query Extraction)
         await self._emit_stage("query_extraction")
 
-        async def _run_retrieval_pass(
-            *,
-            pass_name: str,
-            enable_entity_filter: bool,
-            rerank_score_threshold: int,
-            enable_article_rerank: bool,
-            apply_confidence_gate: bool,
-        ) -> Dict:
-            """
-            Run a single retrieval pass with configurable strictness.
-
-            This enables an option-2 fallback mode: if strict retrieval returns no matches,
-            we rerun a more recall-oriented pass and return "related" articles.
-            """
-            # Stage 3: Multi-Query Hybrid Search
-            t3 = time.time()
-            all_result_lists = await self.hybrid_service.search_multi_query(
-                queries, top_k=100
-            )
-            timings[f"hybrid_search:{pass_name}"] = (time.time() - t3) * 1000
-
-            # Stage 4: RRF Fusion
-            t4 = time.time()
-            fused_chunks = self.fusion_service.reciprocal_rank_fusion(all_result_lists)
-            timings[f"fusion:{pass_name}"] = (time.time() - t4) * 1000
-
-            # Stage 5: Reranking
-            t5 = time.time()
-            reranked_chunks = []
-            if settings.retrieval.reranking.enabled and fused_chunks:
-                top_chunks_for_reranking = fused_chunks[:100]
-                reranked_chunks = await self.reranker_service.rerank(
-                    post_text,
-                    top_chunks_for_reranking,
-                    top_n=10,
-                    entities=entities,
-                    enable_entity_filter=enable_entity_filter,
-                    score_threshold=rerank_score_threshold,
-                )
-            timings[f"reranking:{pass_name}"] = (time.time() - t5) * 1000
-
-            # Stage 6: Article Aggregation
-            t6 = time.time()
-            articles = await self.aggregation_service.aggregate_to_articles(
-                reranked_chunks
-            )
-            timings[f"aggregation:{pass_name}"] = (time.time() - t6) * 1000
-
-            # Stage 7: Article-level reranking (optional)
-            t7 = time.time()
-            if (
-                enable_article_rerank
-                and settings.retrieval.reranking.article_level.enabled
-                and len(articles) > 0
-            ):
-                articles = await self.article_reranker_service.rerank_articles(
-                    query=post_text, articles=articles, top_n=10
-                )
-            timings[f"article_reranking:{pass_name}"] = (time.time() - t7) * 1000
-
-            # Emit: Stage 2 complete (Search & Retrieval) once (first pass only)
-            if pass_name == "strict":
-                await self._emit_stage("search")
-
-            # Stage 8: Confidence scoring
-            t8 = time.time()
-            confidence_metrics = None
-            if settings.retrieval.confidence_scoring.enabled:
-                confidence_metrics = await self.confidence_service.calculate_confidence(
-                    articles=articles, query_text=post_text, query_entities=entities
-                )
-            timings[f"confidence_scoring:{pass_name}"] = (time.time() - t8) * 1000
-
-            # Stage 9: Optional final validation gate
-            min_conf = settings.retrieval.confidence_scoring.min_confidence_threshold
-            if (
-                apply_confidence_gate
-                and confidence_metrics
-                and confidence_metrics.overall_confidence < min_conf
-            ):
-                return {
-                    "articles": [],
-                    "confidence_metrics": confidence_metrics,
-                    "retrieval_confidence": confidence_metrics.overall_confidence,
-                    "early_exit": True,
-                    "exit_reason": "NO_RELEVANT_ARTICLES",
-                }
-
-            low_confidence_warning = (
-                confidence_metrics
-                and confidence_metrics.confidence_tier in ["LOW", "MEDIUM"]
-                and len(articles) > 0
-            )
-
-            return {
-                "articles": articles,
-                "confidence_metrics": confidence_metrics,
-                "retrieval_confidence": (
-                    confidence_metrics.overall_confidence
-                    if confidence_metrics
-                    else None
-                ),
-                "low_confidence_warning": low_confidence_warning,
-                "early_exit": False,
-                "exit_reason": None,
-            }
-
         # Pass 1: Strict (current behavior)
-        strict_res = await _run_retrieval_pass(
+        strict_res = await self._run_retrieval_pass(
+            post_text=post_text,
+            queries=queries,
+            entities=entities,
+            timings=timings,
             pass_name="strict",
             enable_entity_filter=True,
             rerank_score_threshold=settings.retrieval.reranking.score_threshold,
@@ -279,10 +176,15 @@ class RetrievalOrchestrator:
             logger.info(
                 "Strict retrieval returned no articles; running fallback related-mode retrieval"
             )
-            final_res = await _run_retrieval_pass(
+            final_res = await self._run_retrieval_pass(
+                post_text=post_text,
+                queries=queries,
+                entities=entities,
+                timings=timings,
                 pass_name="fallback",
                 enable_entity_filter=False,  # key: do not require entity overlap
-                rerank_score_threshold=3,  # allow broader related chunks
+                # allow broader related chunks
+                rerank_score_threshold=settings.retrieval.fallback.rerank_score_threshold,
                 enable_article_rerank=False,  # avoid strict 'different location/time' gating
                 apply_confidence_gate=False,  # never hard-zero in fallback
             )
@@ -351,6 +253,115 @@ class RetrievalOrchestrator:
             "low_confidence_warning": low_confidence_warning,
             "early_exit": False,
             "message": message,
+        }
+
+    async def _run_retrieval_pass(
+        self,
+        *,
+        post_text: str,
+        queries: List[Tuple[str, List[float]]],
+        entities: Dict,
+        timings: Dict[str, float],
+        pass_name: str,
+        enable_entity_filter: bool,
+        rerank_score_threshold: int,
+        enable_article_rerank: bool,
+        apply_confidence_gate: bool,
+    ) -> Dict:
+        """
+        Run a single retrieval pass (stages 3-9) with configurable strictness.
+
+        This enables a fallback mode: if the strict pass returns no matches, the
+        caller reruns a more recall-oriented pass and returns "related" articles.
+        ``timings`` is mutated in place with per-stage timings keyed by pass name.
+        """
+        # Stage 3: Multi-Query Hybrid Search
+        t3 = time.time()
+        all_result_lists = await self.hybrid_service.search_multi_query(
+            queries, top_k=100
+        )
+        timings[f"hybrid_search:{pass_name}"] = (time.time() - t3) * 1000
+
+        # Stage 4: RRF Fusion
+        t4 = time.time()
+        fused_chunks = self.fusion_service.reciprocal_rank_fusion(all_result_lists)
+        timings[f"fusion:{pass_name}"] = (time.time() - t4) * 1000
+
+        # Stage 5: Reranking
+        t5 = time.time()
+        reranked_chunks = []
+        if settings.retrieval.reranking.enabled and fused_chunks:
+            top_chunks_for_reranking = fused_chunks[:100]
+            reranked_chunks = await self.reranker_service.rerank(
+                post_text,
+                top_chunks_for_reranking,
+                top_n=10,
+                entities=entities,
+                enable_entity_filter=enable_entity_filter,
+                score_threshold=rerank_score_threshold,
+            )
+        timings[f"reranking:{pass_name}"] = (time.time() - t5) * 1000
+
+        # Stage 6: Article Aggregation
+        t6 = time.time()
+        articles = await self.aggregation_service.aggregate_to_articles(reranked_chunks)
+        timings[f"aggregation:{pass_name}"] = (time.time() - t6) * 1000
+
+        # Stage 7: Article-level reranking (optional)
+        t7 = time.time()
+        if (
+            enable_article_rerank
+            and settings.retrieval.reranking.article_level.enabled
+            and len(articles) > 0
+        ):
+            articles = await self.article_reranker_service.rerank_articles(
+                query=post_text, articles=articles, top_n=10
+            )
+        timings[f"article_reranking:{pass_name}"] = (time.time() - t7) * 1000
+
+        # Emit: Stage 2 complete (Search & Retrieval) once (first pass only)
+        if pass_name == "strict":
+            await self._emit_stage("search")
+
+        # Stage 8: Confidence scoring
+        t8 = time.time()
+        confidence_metrics = None
+        if settings.retrieval.confidence_scoring.enabled:
+            confidence_metrics = await self.confidence_service.calculate_confidence(
+                articles=articles, query_text=post_text, query_entities=entities
+            )
+        timings[f"confidence_scoring:{pass_name}"] = (time.time() - t8) * 1000
+
+        # Stage 9: Optional final validation gate
+        min_conf = settings.retrieval.confidence_scoring.min_confidence_threshold
+        if (
+            apply_confidence_gate
+            and confidence_metrics
+            and confidence_metrics.overall_confidence < min_conf
+        ):
+            return {
+                "articles": [],
+                "confidence_metrics": confidence_metrics,
+                "retrieval_confidence": confidence_metrics.overall_confidence,
+                "early_exit": True,
+                "exit_reason": "NO_RELEVANT_ARTICLES",
+            }
+
+        low_confidence_warning = (
+            confidence_metrics
+            and confidence_metrics.confidence_tier in ["LOW", "MEDIUM"]
+            and len(articles) > 0
+        )
+
+        return {
+            "articles": articles,
+            "confidence_metrics": confidence_metrics,
+            "retrieval_confidence": (
+                confidence_metrics.overall_confidence if confidence_metrics else None
+            ),
+            "low_confidence_warning": low_confidence_warning,
+            "early_exit": False,
+            "exit_reason": None,
         }
 
     def _filter_redundant_claims(
